@@ -8,12 +8,12 @@ import 'package:town_pass/gen/assets.gen.dart';
 // Then add MyServiceItem within MyServiceIdExt extension.
 
 /// 「一步一步來」微服務（microservice/）的網址，必須是 https：Android 不允許 http。
-/// ngrok 網址會變，建置時可以直接帶入，不用改程式：
-///   fvm flutter run --dart-define=LIFE_EVENTS_URL=https://你的網域.ngrok-free.app/
-/// 有固定網址後，把下面的 defaultValue 換掉即可。
+/// ngrok／Cloudflare 臨時網址會變，建置時可以直接帶入，不用改程式：
+///   fvm flutter run --dart-define=LIFE_EVENTS_URL=https://你的網域.trycloudflare.com/
+/// 下面的 defaultValue 是目前 demo 用的 Cloudflare Tunnel 網址；重開 cloudflared 後網址會變，要跟著換。
 const String lifeEventsServiceUrl = String.fromEnvironment(
   'LIFE_EVENTS_URL',
-  defaultValue: 'https://YOUR-NGROK-DOMAIN.ngrok-free.app/',
+  defaultValue: 'https://burke-sites-hourly-age.trycloudflare.com/',
 );
 
 enum MyServiceItemId {
