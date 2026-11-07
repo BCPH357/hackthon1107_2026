@@ -22,7 +22,7 @@ npm run preview    # 預覽打包結果，http://localhost:4173
 
 正式網址：**https://townpass-life-events.pages.dev/**
 
-微服務目前全是靜態網頁，放在 Cloudflare Pages：網址固定、自動 HTTPS、免費方案就夠用，不需要自己的電腦一直開著。台北通 App 的「一步一步來」預設就開這個網址。
+微服務的網頁放在 Cloudflare Pages：網址固定、自動 HTTPS、免費方案就夠用，不需要自己的電腦一直開著。台北通 App 的「一步一步來」預設就開這個網址。
 
 更新上線：
 
@@ -36,6 +36,8 @@ npm run deploy         # 型別檢查、打包，再上傳到 Cloudflare Pages
 - 換到新帳號重建專案時，wrangler 4.158 需要加 `--force` 才會建立原本的 Pages 專案（不加會轉成 Workers 而失敗）：`npx wrangler pages project create 專案名稱 --production-branch main --force`，只有建立時需要。
 - 使用者填的身分只存在手機的 localStorage，Pages 只放靜態檔，不會收到任何個人資料。
 - 路由用 hash（`#/events`），所以不需要設定單頁應用的轉址規則。
+- Pages 只放靜態檔，沒有後端。家人交棒後的進度同步要呼叫 Flask 後端（`backend/`，網頁用相對路徑 `api/…`），所以從正式網址開時同步會連不上；要 demo 同步，得在自己電腦開後端與 `npm run dev`，再用快速通道網址建置 App。
+- 城市嚮導的裝置端 AI 問答只在 App 內打包的離線版啟用（根目錄 README 的「城市嚮導離線版」）；建置 App 前沒跑 `npm run build:app` 的話，App 會開正式網址，嚮導的 AI 問答不會出現。
 
 ## 用自己的電腦對外（開發測試用）
 

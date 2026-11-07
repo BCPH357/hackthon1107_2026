@@ -19,6 +19,10 @@ abstract class TPWebMessageListener {
         QRCodeScanMessageHandler(),
         for (final name in ['llm_ask', 'llm_status', 'llm_cancel', 'city_voice', 'city_voice_cancel'])
           CityGuideMessageHandler(name),
+        BleShareStartMessageHandler(),
+        BleShareStopMessageHandler(),
+        BleHandoverShareStartMessageHandler(),
+        BleReceiveMessageHandler(),
       ];
 
   static List<TPWebMessageHandler> get messageHandler => _cachedMessageHandlers;

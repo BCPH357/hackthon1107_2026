@@ -6,6 +6,7 @@ import PageLayout from '../components/PageLayout.vue'
 import { APP_NAME } from '../config'
 import { findEvent } from '../data/lifeEvents'
 import { display } from '../stores/display'
+import { familyCases } from '../stores/cases'
 import { hasIdentity } from '../stores/identity'
 import { doneCount, lastEventId } from '../stores/progress'
 
@@ -56,6 +57,34 @@ const HOW_IT_WORKS = [
         <span class="muted">繼續上次的事</span>
         <span class="continue__title">{{ lastEvent.title }}</span>
         <span v-if="lastEvent.steps" class="muted">已辦好 {{ lastDone }}/{{ lastEvent.steps.length }} 步</span>
+      </span>
+      <AppIcon name="chevron-right" size="1.5rem" />
+    </RouterLink>
+
+    <!-- 被幫的人（例如長輩）用這裡把資料用藍牙傳給旁邊的家人 -->
+    <RouterLink to="/share" class="continue card">
+      <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
+      <span class="continue__text">
+        <span class="continue__title">家人要幫你辦事？</span>
+        <span class="muted">用藍牙把你的年齡、戶籍傳給他</span>
+      </span>
+      <AppIcon name="chevron-right" size="1.5rem" />
+    </RouterLink>
+
+    <!-- 子女：接收長輩的交棒，之後在「家人交給我的事」看進度 -->
+    <RouterLink v-if="familyCases.length" to="/family" class="continue card">
+      <span class="share__icon"><AppIcon name="users" size="1.5rem" /></span>
+      <span class="continue__text">
+        <span class="continue__title">家人交給我的事</span>
+        <span class="muted">共 {{ familyCases.length }} 件，點進去打勾</span>
+      </span>
+      <AppIcon name="chevron-right" size="1.5rem" />
+    </RouterLink>
+    <RouterLink to="/handover/receive" class="continue card">
+      <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
+      <span class="continue__text">
+        <span class="continue__title">接收家人交棒</span>
+        <span class="muted">家人有做不到的步驟，可以用藍牙交給你辦</span>
       </span>
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
@@ -156,8 +185,10 @@ const HOW_IT_WORKS = [
   color: var(--c-gray-600);
 }
 
+/* 字放大到 200% 時排不下：圖示自己一行，文字和箭頭換到下一行，文字不會被擠成一行兩個字 */
 .continue {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   color: inherit;
@@ -165,7 +196,8 @@ const HOW_IT_WORKS = [
 }
 
 .continue__text {
-  flex: 1;
+  flex: 1 1 6rem;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }
@@ -173,6 +205,18 @@ const HOW_IT_WORKS = [
 .continue__title {
   font-size: var(--fs-title);
   font-weight: 600;
+}
+
+.share__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--c-primary-100);
+  color: var(--c-primary-700);
 }
 
 .privacy {

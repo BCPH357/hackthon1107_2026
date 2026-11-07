@@ -29,6 +29,8 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   archive: 4.3.0
+  # 幫家人辦的藍牙傳送（MIT）
+  bluetooth_low_energy: ^6.2.1
   cached_network_image: ^4.0.4
   carousel_slider: ^5.1.2
   characters: ^1.4.1

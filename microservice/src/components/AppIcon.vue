@@ -25,6 +25,7 @@ export type IconName =
   | 'close'
   | 'navigation'
   | 'camera'
+  | 'bluetooth'
 
 withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' })
 </script>
@@ -112,5 +113,6 @@ withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' 
       <path d="M3.5 8.5h3.5l2-3h6l2 3h3.5v11h-17z" />
       <circle cx="12" cy="13.5" r="3.5" />
     </template>
+    <path v-else-if="name === 'bluetooth'" d="M6.5 7l11 10-5.5 4.5v-19L17.5 7l-11 10" />
   </svg>
 </template>

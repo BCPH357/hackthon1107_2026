@@ -6,7 +6,13 @@ import OptionGroup from '../components/OptionGroup.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
 import { DISTRICTS, OUTSIDE_TAIPEI, OUTSIDE_TAIPEI_LABEL, YES_NO_OPTIONS } from '../data/identityOptions'
-import { getUserInfo, type TownPassAccount } from '../services/townpass'
+import {
+  getUserInfo,
+  receiveBleShare,
+  type BleReceiveResult,
+  type SharedBasicInfo,
+  type TownPassAccount,
+} from '../services/townpass'
 import { identity, identitySummary } from '../stores/identity'
 import { ageFromBirthday } from '../utils/age'
 import { arrayModel } from '../utils/arrayModel'
@@ -50,9 +56,65 @@ function applyAccount(account: TownPassAccount) {
   identity.basicSource = 'account'
 }
 
+// ---- 幫家人辦：用藍牙接收家人手機傳來的基本資料 ----
+type BleStatus =
+  | { step: 'idle' }
+  | { step: 'searching' }
+  | { step: 'confirm'; code: string; data: SharedBasicInfo; mocked: boolean }
+  | { step: 'applied'; name: string; mocked: boolean }
+  | { step: 'failed'; message: string }
+
+const ble = ref<BleStatus>({ step: 'idle' })
+
+function failMessage(result: Exclude<BleReceiveResult, { state: 'found' }>): string {
+  if (result.state === 'notFound') {
+    return '附近找不到正在傳送的家人。請確認家人已按下「開始傳送」，兩支手機靠近一點再試一次。'
+  }
+  if (result.state === 'unavailable') {
+    switch (result.reason) {
+      case 'off':
+        return '藍牙沒有打開。請打開藍牙後再試一次。'
+      case 'unauthorized':
+        return '台北通沒有使用藍牙的權限。請到手機的「設定 → 台北通」開啟藍牙。'
+      default:
+        return '這支手機不能用藍牙接收，請直接填寫下面的資料。'
+    }
+  }
+  return '接收中斷了，請再試一次。'
+}
+
+async function receiveFromFamily() {
+  ble.value = { step: 'searching' }
+  const { result, mocked } = await receiveBleShare()
+  ble.value =
+    result.state === 'found'
+      ? { step: 'confirm', code: result.code, data: result.data, mocked }
+      : { step: 'failed', message: failMessage(result) }
+}
+
+function applyShared(data: SharedBasicInfo) {
+  const inTaipei = data.city === '臺北市' || data.city === '台北市'
+  identity.age = typeof data.age === 'number' ? data.age : null
+  identity.taipeiResident = typeof data.citizen === 'boolean' ? (data.citizen ? 'yes' : 'no') : null
+  identity.district =
+    inTaipei && data.town && (DISTRICTS as readonly string[]).includes(data.town)
+      ? data.town
+      : data.city
+        ? OUTSIDE_TAIPEI
+        : null
+  identity.indigenous = typeof data.native === 'boolean' ? (data.native ? 'yes' : 'no') : null
+  identity.basicSource = 'bluetooth'
+}
+
+function confirmShared() {
+  if (ble.value.step !== 'confirm') return
+  applyShared(ble.value.data)
+  ble.value = { step: 'applied', name: ble.value.data.name || '家人', mocked: ble.value.mocked }
+}
+
 onMounted(async () => {
   if (!isSelf.value) {
-    identity.basicSource = 'manual'
+    if (identity.basicSource !== 'bluetooth') identity.basicSource = 'manual'
     editing.value = true
     return
   }
@@ -112,6 +174,43 @@ function next() {
     <form v-else class="stack stack--lg" @submit.prevent="next">
       <p v-if="accountMissing" class="card card--tint">讀不到台北通的帳號資料，請自己填寫，不想填的可以略過。</p>
 
+      <section v-if="!isSelf" class="card ble" aria-labelledby="ble-title" aria-live="polite">
+        <h2 id="ble-title" class="section-title ble__title">
+          <AppIcon name="bluetooth" />
+          家人在旁邊嗎？
+        </h2>
+
+        <template v-if="ble.step === 'confirm'">
+          <p>找到 <strong>{{ ble.data.name || '家人' }}</strong> 的資料。</p>
+          <p class="ble__code-label">家人手機上顯示的代碼是</p>
+          <p class="ble__code" :aria-label="`代碼 ${ble.code.split('').join(' ')}`">{{ ble.code }}</p>
+          <span v-if="ble.mocked" class="badge badge--draft ble__badge">示範資料・未連接台北通</span>
+          <button type="button" class="btn btn--primary btn--block" @click="confirmShared">代碼相同，帶入資料</button>
+          <button type="button" class="btn btn--ghost btn--block" @click="receiveFromFamily">代碼不一樣，重新搜尋</button>
+        </template>
+
+        <template v-else>
+          <p v-if="ble.step === 'applied'" class="ble__done">
+            <AppIcon name="check" />
+            已帶入{{ ble.name }}的資料，下面可以再修改。
+            <span v-if="ble.mocked" class="badge badge--draft">示範資料・未連接台北通</span>
+          </p>
+          <p v-else-if="ble.step === 'failed'" class="ble__error" role="alert">{{ ble.message }}</p>
+          <p v-else class="muted">
+            請家人打開台北通的這個服務，在首頁點「把我的資料傳給家人」，就能用藍牙把年齡、戶籍帶過來，不用自己填。
+          </p>
+          <button
+            type="button"
+            class="btn btn--secondary btn--block"
+            :disabled="ble.step === 'searching'"
+            @click="receiveFromFamily"
+          >
+            <AppIcon name="bluetooth" />
+            {{ ble.step === 'searching' ? '正在搜尋附近的家人…' : ble.step === 'idle' ? '用藍牙接收家人的資料' : '再接收一次' }}
+          </button>
+        </template>
+      </section>
+
       <div class="field">
         <label for="age" class="field__label">{{ subject }}幾歲？</label>
         <div class="input-suffix">
@@ -160,5 +259,51 @@ function next() {
 .account__edit {
   align-self: flex-start;
   padding-left: 0;
+}
+
+.ble {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ble__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--c-primary-700);
+}
+
+.ble__code-label {
+  color: var(--c-gray-700);
+}
+
+/* 代碼要讓長輩和家人一眼就能對照，所以放大、加字距 */
+.ble__code {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  color: var(--c-primary-700);
+  font-variant-numeric: tabular-nums;
+}
+
+.ble__badge {
+  align-self: flex-start;
+}
+
+.ble__done {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  color: var(--c-primary-700);
+}
+
+.ble__error {
+  padding: 0.75rem;
+  border-radius: var(--radius);
+  background: var(--c-orange-50);
+  color: var(--c-orange-700);
 }
 </style>
