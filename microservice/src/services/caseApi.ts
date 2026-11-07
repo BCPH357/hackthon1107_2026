@@ -1,6 +1,15 @@
 // 交棒案件的同步 API（backend/app.py）。
-// 用相對路徑 api/…：開發時由 Vite proxy 轉到本機 Flask，同一條 ngrok／Cloudflare 通道就能同時提供前端與 API。
 // 每次呼叫都帶交棒票裡的存取權杖；伺服器只存權杖的雜湊值。
+//
+// API 位址：
+// - 沒設定 VITE_API_BASE：用相對路徑 api/…，由 Vite（dev／preview）proxy 轉到本機 Flask，同一條通道就能同時提供前端與 API。
+// - 部署到 Cloudflare Pages 或打包進 App（build:app）時，網頁所在的伺服器只放靜態檔，PUT 會回 405。
+//   建置時要用 VITE_API_BASE 指定 Flask 的對外網址（例如 Flask 的 Cloudflare 通道），
+//   Flask 端的 ALLOWED_ORIGINS 也要列出網頁的來源（見 backend/.env.example）。
+const API_BASE = (() => {
+  const base = (import.meta.env.VITE_API_BASE as string | undefined)?.trim()
+  return base ? `${base.replace(/\/+$/, '')}/api/` : 'api/'
+})()
 
 export type CaseApiError =
   /** 版本不符：別人剛更新過，要先下載最新版、合併後再上傳 */
@@ -26,7 +35,7 @@ async function call<T>(method: 'GET' | 'PUT', path: string, token: string, body?
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
-    const response = await fetch(`api/${path}`, {
+    const response = await fetch(`${API_BASE}${path}`, {
       method,
       headers: {
         Authorization: `Bearer ${token}`,

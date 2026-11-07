@@ -14,12 +14,20 @@ const tunnelHosts = [
   '.ngrok.io',
 ]
 
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ command, mode }) => {
   // 第三個參數給空字串：連同沒有 VITE_ 前綴的環境變數（例如 BACKEND_PORT）一起讀
   const env = loadEnv(mode, '.', '')
 
-  // /api 轉發到本機的 Flask 後端（backend/），同一條 ngrok／Cloudflare 通道就能同時提供前端與 API。
-  // 部署在 Cloudflare Pages 時沒有後端，家人進度同步會顯示連不上，只能用通道 demo。
+  // Pages 與 App 內的離線版都只放靜態檔，沒指定 VITE_API_BASE 時交棒會失敗（PUT 回 405），打包時提醒
+  if (command === 'build' && !env.VITE_API_BASE) {
+    console.warn(
+      '\n⚠ 沒有設定 VITE_API_BASE：交棒同步會呼叫相對路徑 api/…，只有 npm run preview 透過 proxy 能用。\n' +
+        '  要部署到 Cloudflare Pages 或打包進 App，請加上 Flask 的對外網址，例如：\n' +
+        '  VITE_API_BASE=https://xxxx.trycloudflare.com npm run deploy\n',
+    )
+  }
+
+  // 沒設定 VITE_API_BASE 時（dev／preview），/api 轉發到本機的 Flask 後端（backend/），同一條通道就能同時提供前端與 API。
   // macOS 的 AirPlay 接收器會占用 5000，這時後端改用別的埠，並用 BACKEND_PORT 告訴 Vite
   const apiProxy = {
     '/api': { target: `http://localhost:${env.BACKEND_PORT || '5000'}`, changeOrigin: true },

@@ -36,7 +36,20 @@ npm run deploy         # 型別檢查、打包，再上傳到 Cloudflare Pages
 - 換到新帳號重建專案時，wrangler 4.158 需要加 `--force` 才會建立原本的 Pages 專案（不加會轉成 Workers 而失敗）：`npx wrangler pages project create 專案名稱 --production-branch main --force`，只有建立時需要。
 - 使用者填的身分只存在手機的 localStorage，Pages 只放靜態檔，不會收到任何個人資料。
 - 路由用 hash（`#/events`），所以不需要設定單頁應用的轉址規則。
-- Pages 只放靜態檔，沒有後端。家人交棒後的進度同步要呼叫 Flask 後端（`backend/`，網頁用相對路徑 `api/…`），所以從正式網址開時同步會連不上；要 demo 同步，得在自己電腦開後端與 `npm run dev`，再用快速通道網址建置 App。
+- Pages 只放靜態檔，沒有後端（對 `api/…` 送 PUT 會回 405，畫面顯示「伺服器發生問題」）。交棒同步要呼叫 Flask 後端（`backend/`），部署前要把 Flask 開成對外網址，建置時用 `VITE_API_BASE` 帶入；App 內的離線版（`npm run build:app`）也一樣：
+
+  ```bash
+  # 1. 開 Flask，允許 Pages 與 App 離線版兩個來源（macOS 的 5000 被 AirPlay 占用，改用 5001）
+  cd backend
+  PORT=5001 ALLOWED_ORIGINS=https://townpass-life-events.pages.dev,http://127.0.0.1:43862 python3 app.py
+  # 2. 另開終端機，給 Flask 一條快速通道，記下印出的 https://xxxx.trycloudflare.com
+  cloudflared tunnel --no-autoupdate --url http://localhost:5001
+  # 3. 帶入通道網址部署（打包進 App 時改成 npm run build:app，同樣要帶）
+  cd microservice
+  VITE_API_BASE=https://xxxx.trycloudflare.com npm run deploy
+  ```
+
+  通道網址每次重開都會變，變了就重跑第 3 步；App 不用重新建置（離線版例外，要重跑 `build:app` 再建置 App）。案件只存在 Flask 的記憶體，Flask 重開後要請長輩再交棒一次。
 - 城市嚮導的裝置端 AI 問答只在 App 內打包的離線版啟用（根目錄 README 的「城市嚮導離線版」）；建置 App 前沒跑 `npm run build:app` 的話，App 會開正式網址，嚮導的 AI 問答不會出現。
 
 ## 用自己的電腦對外（開發測試用）
