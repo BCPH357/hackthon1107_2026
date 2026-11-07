@@ -13,6 +13,7 @@ export interface SpeechChunk {
 }
 
 export const ttsSupported = ref(false)
+export const localTtsSupported = ref(false)
 export const speaking = ref(false)
 /** 正在念的區塊 key，畫面用來標示念到哪裡 */
 export const currentKey = ref<string | null>(null)
@@ -27,14 +28,15 @@ const isApple =
 function refreshSupport(): void {
   const hasApi = Boolean(synth) && typeof window.SpeechSynthesisUtterance !== 'undefined'
   ttsSupported.value = hasApi && (isApple || (synth?.getVoices().length ?? 0) > 0)
+  localTtsSupported.value = hasApi && Boolean(pickVoice(true))
 }
 
 refreshSupport()
 synth?.addEventListener?.('voiceschanged', refreshSupport)
 
 /** 優先用臺灣華語的聲音（iPhone 是「美佳」），沒有的話交給系統依 zh-TW 決定 */
-function pickVoice(): SpeechSynthesisVoice | undefined {
-  const voices = synth?.getVoices() ?? []
+function pickVoice(localOnly = false): SpeechSynthesisVoice | undefined {
+  const voices = (synth?.getVoices() ?? []).filter((voice) => !localOnly || voice.localService)
   const normalized = (voice: SpeechSynthesisVoice) => voice.lang.replace('_', '-').toLowerCase()
   return (
     voices.find((voice) => normalized(voice) === 'zh-tw') ??
@@ -56,12 +58,14 @@ export function toSpeakable(text: string): string {
 
 let queue: SpeechChunk[] = []
 let index = 0
+let queueLocalOnly = false
 // 保留目前這一句的參考：Chrome 會回收沒人參考的 utterance，導致 onend 不觸發
 let current: SpeechSynthesisUtterance | null = null
 
 function finish(): void {
   current = null
   queue = []
+  queueLocalOnly = false
   speaking.value = false
   currentKey.value = null
 }
@@ -76,7 +80,11 @@ function speakNext(): void {
   const utterance = new SpeechSynthesisUtterance(toSpeakable(chunk.text))
   utterance.lang = 'zh-TW'
   utterance.rate = 0.9 // 稍微放慢，長者比較聽得清楚
-  const voice = pickVoice()
+  const voice = pickVoice(queueLocalOnly)
+  if (queueLocalOnly && !voice) {
+    finish()
+    return
+  }
   if (voice) utterance.voice = voice
   utterance.onstart = () => {
     if (current === utterance) currentKey.value = chunk.key
@@ -98,10 +106,11 @@ function speakNext(): void {
 }
 
 /** 一段一段念；每段分開念，避免長文字在部分瀏覽器念到一半被切掉 */
-export function speakChunks(chunks: SpeechChunk[]): void {
+export function speakChunks(chunks: SpeechChunk[], localOnly = false): void {
   if (!synth || !chunks.length) return
   stopSpeaking()
   queue = chunks
+  queueLocalOnly = localOnly
   index = 0
   speaking.value = true
   speakNext()

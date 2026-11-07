@@ -26,6 +26,15 @@
 		<string>$(FLUTTER_BUILD_NUMBER)</string>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
+		<key>NSAppTransportSecurity</key>
+		<dict>
+			<key>NSAllowsLocalNetworking</key>
+			<true/>
+		</dict>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>城市嚮導需要麥克風，才能在手機上將你的提問轉成文字。</string>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>城市嚮導在手機上辨識你說的提問。</string>
 		<key>UIApplicationSceneManifest</key>
 		<dict>
 			<key>UIApplicationSupportsMultipleScenes</key>

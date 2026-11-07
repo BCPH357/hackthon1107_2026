@@ -4,10 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import BottomSheet from '../components/BottomSheet.vue'
 import CategorySheet from '../components/CategorySheet.vue'
+import CityGuideDialog from '../components/CityGuideDialog.vue'
+import CityGuideStation from '../components/CityGuideStation.vue'
+import DisplayButton from '../components/DisplayButton.vue'
 import PageLayout from '../components/PageLayout.vue'
 import { CITY_PLOTS, CITY_THEMES, themeOf } from '../city/config'
 import { categoryProgress, findCategory, recommendedCategoryIds } from '../city/progress'
 import { CityScene } from '../city/scene'
+import { GUIDE_STATIONS, type GuideChoice } from '../city/guide'
 import { CATEGORIES } from '../data/lifeEvents'
 
 const route = useRoute()
@@ -19,6 +23,10 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matc
 const stage = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const sheet = ref<InstanceType<typeof BottomSheet> | null>(null)
+const guidePin = ref<HTMLButtonElement | null>(null)
+const guideOpen = ref(false)
+const guideWalking = ref(false)
+const guideStation = ref<{ index: number; fullRoute: boolean; stepId?: string } | null>(null)
 const status = ref<'loading' | 'ready' | 'unsupported' | 'error'>('loading')
 const loadPercent = ref(0)
 /** 字放大到 125% 以上，或螢幕太窄讓標籤排不開時，標籤改排在地圖下方 */
@@ -56,6 +64,10 @@ const selectedId = computed(() => {
 const selectedCategory = computed(() => findCategory(selectedId.value))
 
 function select(categoryId: string | null): void {
+  if (guideWalking.value || guideOpen.value) return
+  if (guideStation.value && GUIDE_STATIONS[guideStation.value.index].categoryId !== categoryId) {
+    guideStation.value = null
+  }
   if (!categoryId) {
     if (selectedId.value) closeSheet()
     return
@@ -64,18 +76,58 @@ function select(categoryId: string | null): void {
     sheet.value?.focus()
     return
   }
+  void showCategory(categoryId)
+}
+
+function showCategory(categoryId: string) {
   // 抽屜已開時換類別用 replace，返回鍵不必一棟一棟退
   const location = { query: { ...route.query, cat: categoryId } }
-  if (selectedId.value) router.replace(location)
-  else router.push(location)
+  return selectedId.value ? router.replace(location) : router.push(location)
 }
 
 function closeSheet(): void {
+  if (guideWalking.value) return
+  if (guideOpen.value) {
+    guideOpen.value = false
+    return
+  }
+  guideStation.value = null
   const lastId = selectedId.value
   // 抽屜是在地圖上點開的就退回上一筆；從其他頁帶著類別跳進來的，就只把類別拿掉
   if (window.history.state?.back === '/city') router.back()
   else router.replace({ query: {} })
   if (lastId) nextTick(() => pinEls.get(lastId)?.focus({ preventScroll: true }))
+}
+
+function openGuide(): void {
+  if (guideWalking.value) return
+  guideOpen.value = true
+  nextTick(() => sheet.value?.focus())
+}
+
+async function goToGuideStation(index: number, fullRoute: boolean, stepId?: string): Promise<void> {
+  const stop = GUIDE_STATIONS[index]
+  if (!stop || guideWalking.value) return
+  guideOpen.value = false
+  guideWalking.value = true
+  scene?.setInsetBottom(0)
+  await scene?.walkGuideTo(stop.categoryId)
+  if (unmounted) return
+  if (selectedId.value !== stop.categoryId) await showCategory(stop.categoryId)
+  if (unmounted) return
+  guideStation.value = { index, fullRoute, stepId }
+  guideWalking.value = false
+  await nextTick()
+  layoutPins()
+  sheet.value?.focus()
+}
+
+function startGuide(choice: GuideChoice): void {
+  void goToGuideStation(choice.station ?? 0, choice.station === null, choice.stepId)
+}
+
+function nextGuideStation(): void {
+  if (guideStation.value?.fullRoute) void goToGuideStation(guideStation.value.index + 1, true)
 }
 
 // ── 3D 場景 ─────────────────────────
@@ -115,6 +167,7 @@ onMounted(async () => {
     })
     if (unmounted) return
     status.value = 'ready'
+    void scene.addGuide().catch(() => undefined)
     await nextTick()
     measurePins()
     layoutPins()
@@ -134,6 +187,9 @@ onBeforeUnmount(() => {
 })
 
 watch(selectedId, (id, previous) => {
+  if (guideStation.value && GUIDE_STATIONS[guideStation.value.index].categoryId !== id) {
+    guideStation.value = null
+  }
   scene?.select(id)
   // 抽屜開著時換類別，焦點移到新的標題
   if (id && previous) nextTick(() => sheet.value?.focus())
@@ -231,6 +287,14 @@ function computePinBoxes(): PinBox[] {
 }
 
 function layoutPins(): void {
+  if (guideWalking.value) return
+  const position = scene?.guideScreenPosition()
+  if (guidePin.value) {
+    const visible = position && stage.value &&
+      position.x > 0 && position.y > 0 && position.x < stage.value.clientWidth && position.y < stage.value.clientHeight
+    guidePin.value.style.visibility = visible ? 'visible' : 'hidden'
+    if (position) guidePin.value.style.transform = `translate3d(${position.x}px, ${position.y}px, 0) translate(-50%, -100%)`
+  }
   if (gridLabels.value) return
   for (const box of computePinBoxes()) {
     const el = pinEls.get(box.id)
@@ -278,20 +342,28 @@ watch(gridLabels, async (grid) => {
 </script>
 
 <template>
-  <PageLayout title="城市地圖" fallback-back="/" flush hide-city-link>
-    <div class="city">
-      <header class="city__head">
-        <div class="city__head-row">
-          <h1 class="city__title">點一棟大樓，看看要辦的事</h1>
-          <RouterLink to="/events" class="city__list-link">改用清單</RouterLink>
+  <PageLayout title="城市地圖" fallback-back="/" flush hide-city-link hide-display-button>
+    <div class="city" :class="{ 'city--walking': guideWalking }">
+      <header class="city__header" :inert="guideWalking" :aria-hidden="guideWalking">
+        <div class="city__header-content">
+          <div class="city__tools"><DisplayButton /></div>
+          <div class="city__head">
+            <div class="city__head-row">
+              <h1 class="city__title">點一棟大樓，看看要辦的事</h1>
+              <RouterLink to="/events" class="city__list-link">改用清單</RouterLink>
+            </div>
+            <button type="button" class="btn btn--primary guide-entry" @click="openGuide">
+              問問城市嚮導
+            </button>
+            <p v-if="status === 'ready'" class="city__hint">兩指可以放大縮小、旋轉，也可以用地圖下方的按鈕</p>
+            <ul class="legend" aria-label="大樓顏色代表的主題">
+              <li v-for="theme in themes" :key="theme.key" class="legend__item" :style="{ '--accent': theme.accent }">
+                <span class="legend__dot" aria-hidden="true" />
+                {{ theme.title }}
+              </li>
+            </ul>
+          </div>
         </div>
-        <p v-if="status === 'ready'" class="city__hint">兩指可以放大縮小、旋轉，也可以用地圖下方的按鈕</p>
-        <ul class="legend" aria-label="大樓顏色代表的主題">
-          <li v-for="theme in themes" :key="theme.key" class="legend__item" :style="{ '--accent': theme.accent }">
-            <span class="legend__dot" aria-hidden="true" />
-            {{ theme.title }}
-          </li>
-        </ul>
       </header>
 
       <div class="city__map">
@@ -299,6 +371,15 @@ watch(gridLabels, async (grid) => {
           <div class="city__clouds" aria-hidden="true" />
           <!-- 3D 畫面只是視覺；能操作的是下面的標籤按鈕 -->
           <canvas v-show="status !== 'unsupported' && status !== 'error'" ref="canvas" class="city__canvas" aria-hidden="true" />
+          <button
+            v-show="!guideWalking && !guideOpen"
+            ref="guidePin"
+            class="guide-pin"
+            type="button"
+            aria-label="問問城市嚮導"
+            @click="openGuide"
+          >問我</button>
+          <p v-if="guideWalking" class="guide-walking card" role="status">嚮導帶你過去⋯</p>
 
           <div v-if="status === 'loading'" class="city__loading" role="status">
             <span class="city__loading-icon"><AppIcon name="city" size="2rem" /></span>
@@ -306,7 +387,7 @@ watch(gridLabels, async (grid) => {
             <span class="city__loading-bar" aria-hidden="true"><span :style="{ width: `${loadPercent}%` }" /></span>
           </div>
           <!-- 不會雙指操作也能調整視角（WCAG 2.5.1：手勢要有單指的替代方式） -->
-          <div v-if="status === 'ready'" class="map-controls" role="toolbar" aria-label="調整地圖視角">
+          <div v-if="status === 'ready'" class="map-controls" :inert="guideWalking" :aria-hidden="guideWalking" role="toolbar" aria-label="調整地圖視角">
             <button type="button" class="map-controls__btn" aria-label="縮小" @click="scene?.zoomBy(1 / 1.4)">
               <AppIcon name="minus" size="1.375rem" />
             </button>
@@ -333,7 +414,7 @@ watch(gridLabels, async (grid) => {
         </div>
 
         <ul
-          v-show="gridLabels || status === 'ready'"
+          v-show="!guideWalking && (gridLabels || status === 'ready')"
           class="pins"
           :class="gridLabels ? 'pins--grid' : 'pins--overlay'"
           aria-label="城市裡的大樓"
@@ -371,13 +452,23 @@ watch(gridLabels, async (grid) => {
 
     <BottomSheet
       ref="sheet"
-      :open="Boolean(selectedCategory)"
+      :open="guideOpen || (!guideWalking && Boolean(selectedCategory))"
       :labelledby="SHEET_TITLE_ID"
       @close="closeSheet"
       @height="onSheetHeight"
     >
+      <CityGuideDialog v-if="guideOpen" :title-id="SHEET_TITLE_ID" @close="closeSheet" @guide="startGuide" />
+      <CityGuideStation
+        v-else-if="guideStation && selectedCategory"
+        :index="guideStation.index"
+        :full-route="guideStation.fullRoute"
+        :step-id="guideStation.stepId"
+        :title-id="SHEET_TITLE_ID"
+        @close="closeSheet"
+        @next="nextGuideStation"
+      />
       <CategorySheet
-        v-if="selectedCategory"
+        v-else-if="selectedCategory"
         :key="selectedCategory.id"
         :category="selectedCategory"
         :title-id="SHEET_TITLE_ID"
@@ -388,11 +479,47 @@ watch(gridLabels, async (grid) => {
 </template>
 
 <style scoped>
+.guide-entry { align-self: flex-start; }
+.guide-pin {
+  position: absolute; left: 0; top: 0; z-index: 3; visibility: hidden;
+  min-height: var(--tap); padding: 0.25rem 0.65rem; border: 2px solid white;
+  border-radius: 1rem; background: var(--c-primary-700); color: white; font-weight: 700;
+}
+.guide-walking { position: absolute; top: 0.75rem; left: 0.75rem; z-index: 3; padding: 0.5rem; }
 .city {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 0;
+}
+
+.city__header {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.32s var(--ease-out);
+}
+
+.city__header-content {
+  min-height: 0;
+  overflow: hidden;
+  transition: opacity 0.24s ease, transform 0.32s var(--ease-out);
+}
+
+.city__tools {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.75rem var(--gutter) 0;
+  background: var(--c-gray-50);
+}
+
+.city--walking .city__header {
+  grid-template-rows: 0fr;
+  pointer-events: none;
+}
+
+.city--walking .city__header-content {
+  opacity: 0;
+  transform: translateY(-1rem);
 }
 
 .city__head {
@@ -471,6 +598,11 @@ watch(gridLabels, async (grid) => {
   min-height: 0;
 }
 
+.city--walking .city__map,
+.city--walking .city__stage {
+  min-height: 0;
+}
+
 /* 地圖上的觸控全部交給手勢（拖曳、捏合、旋轉），不讓瀏覽器拿去捲動或縮放整頁 */
 .city__canvas {
   position: absolute;
@@ -481,6 +613,10 @@ watch(gridLabels, async (grid) => {
   height: 100%;
   touch-action: none;
   cursor: grab;
+}
+
+.city--walking .city__canvas {
+  pointer-events: none;
 }
 
 .city__hint {
@@ -504,6 +640,21 @@ watch(gridLabels, async (grid) => {
     0 4px 14px rgb(0 0 0 / 14%),
     0 0 0 1px rgb(0 0 0 / 5%);
   transform: translateX(-50%);
+  transition: opacity 0.24s ease, transform 0.32s var(--ease-out);
+}
+
+.city--walking .map-controls {
+  opacity: 0;
+  transform: translate(-50%, calc(100% + 0.75rem));
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .city__header,
+  .city__header-content,
+  .map-controls {
+    transition: none;
+  }
 }
 
 .map-controls__btn {

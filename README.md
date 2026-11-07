@@ -37,3 +37,22 @@ Here are some quick setup guide.
    ``` bash
    flutter run
    ```
+
+## 城市嚮導離線版
+
+在 Flutter build 前，先將「一步一步來」網頁與 3D 素材打包進 App。修改網頁後也要重跑這個步驟。
+
+```bash
+cd microservice
+npm ci
+npm run build:app
+```
+
+城市嚮導使用 `flutter_edge_ai` 2.5.6 與 `flutter_edge_ai_litertlm` 1.19.2 在裝置端從本機資料選擇服務。可用模型是 LiteRT Community 發布的 Google Gemma 4 IT，兩個版本均為 Apache-2.0 授權。
+
+| 版本 | 模型檔 | 來源 |
+| --- | --- | --- |
+| Gemma 4 E2B IT | `gemma-4-E2B-it.litertlm`，混合 2、4、8 位元量化 | [E2B 模型卡](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) |
+| Gemma 4 E4B IT | `gemma-4-E4B-it.litertlm`，3.66 GB 量化檔 | [E4B 模型卡](https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm) |
+
+模型檔另存於 App 私有空間。iPhone 實測以 USB 將檔案放進 App 資料容器的 `Library/Application Support/gemma-models/`。同時放兩個版本時，預設先試 E4B，可在 Flutter build 加上 `--dart-define=CITY_GUIDE_PREFER_E2B=true` 優先使用 E2B。沒有可用模型時，三站導覽仍可用本機服務資料操作。[城市嚮導規劃與驗收](docs/ai-city-guide.md)

@@ -89,3 +89,4 @@ app.*.map.json
 
 # FVM Version Cache
 .fvm/
+/assets/life_events/site.zip

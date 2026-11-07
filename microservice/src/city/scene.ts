@@ -1,4 +1,5 @@
 import {
+  AnimationMixer,
   Box3,
   BoxGeometry,
   Color,
@@ -21,11 +22,13 @@ import {
   Vector3,
   WebGLRenderer,
   type BufferGeometry,
+  type AnimationClip,
   type Material,
   type Texture,
 } from 'three'
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
+import { clone as cloneSkeleton } from 'three/addons/utils/SkeletonUtils.js'
 import { ICONS } from '../data/icons'
 import { CATEGORIES } from '../data/lifeEvents'
 import {
@@ -226,6 +229,11 @@ export class CityScene {
   private readonly pickables: Object3D[] = []
   private readonly raycaster = new Raycaster()
   private readonly tweens = new Map<string, Tween>()
+  private guide: Group | null = null
+  private guideMixer: AnimationMixer | null = null
+  private guideClips: AnimationClip[] = []
+  private finishWalk: (() => void) | null = null
+  private lastGuideFrame = 0
   /** 這個場景自己建立的資源，離開頁面時要釋放；模型本身在快取裡共用，不在這裡 */
   private readonly owned: { dispose: () => void }[] = []
   private readonly groundPlane = new Plane(new Vector3(0, 1, 0), 0)
@@ -417,8 +425,108 @@ export class CityScene {
     return out.set(((point.x + 1) / 2) * this.size.width, ((1 - point.y) / 2) * this.size.height)
   }
 
+  async addGuide(): Promise<void> {
+    const gltf = await loadModel('characters/guide')
+    if (this.disposed || this.guide) return
+    const figure = cloneSkeleton(gltf.scene)
+    const bounds = new Box3().setFromObject(figure)
+    const scale = 0.7 / Math.max(0.01, bounds.max.y - bounds.min.y)
+    figure.scale.setScalar(scale)
+    figure.position.y = -bounds.min.y * scale
+    const guide = new Group()
+    guide.position.set(0, 0.025, ROAD_HALF - 0.32)
+    guide.add(figure)
+    this.content.add(guide)
+    this.guide = guide
+    this.guideMixer = new AnimationMixer(figure)
+    this.guideClips = gltf.animations
+    this.guidePose('idle')
+    this.requestRender()
+  }
+
+  guideScreenPosition(): Vector2 | null {
+    const guide = this.guide
+    if (!guide) return null
+    const point = guide.localToWorld(new Vector3(0, 0.83, 0)).project(this.camera)
+    return new Vector2(((point.x + 1) / 2) * this.size.width, ((1 - point.y) / 2) * this.size.height)
+  }
+
+  private guidePose(name: string): void {
+    const clip = this.guideClips.find((item) => item.name === name)
+    this.guideMixer?.stopAllAction()
+    if (clip) this.guideMixer?.clipAction(clip).reset().play()
+    this.guideMixer?.update(0)
+  }
+
+  walkGuideTo(categoryId: string): Promise<void> {
+    const guide = this.guide
+    const plot = CITY_PLOTS.find((item) => item.categoryId === categoryId)
+    if (!guide || !plot || this.disposed) return Promise.resolve()
+    this.finishWalk?.()
+    const streets = [-(ROAD_HALF - 0.32), -PLOT_PITCH / 2, PLOT_PITCH / 2, ROAD_HALF - 0.32]
+    const { x } = plotCenter(plot)
+    const target = new Vector3(x, guide.position.y, streets[plot.row + 1])
+    if (this.options.reducedMotion || guide.position.distanceTo(target) < 0.01) {
+      guide.position.copy(target)
+      this.requestRender()
+      return Promise.resolve()
+    }
+    const start = guide.position.clone()
+    const turnX = streets.reduce((best, street) =>
+      Math.abs(street - start.x) + Math.abs(street - target.x) <
+      Math.abs(best - start.x) + Math.abs(best - target.x) ? street : best,
+    )
+    const path = Math.abs(start.z - target.z) < 0.001
+      ? [start, target]
+      : [start, new Vector3(turnX, start.y, start.z), new Vector3(turnX, target.y, target.z), target]
+    const segments = path.slice(1).map((to, i) => ({ from: path[i], to, length: to.distanceTo(path[i]) }))
+      .filter((segment) => segment.length > 0.001)
+    const distance = segments.reduce((total, segment) => total + segment.length, 0)
+    const cameraStart = { ...this.view }
+    this.tweens.delete('camera')
+    this.guidePose('walk')
+    this.lastGuideFrame = performance.now()
+
+    return new Promise((resolve) => {
+      this.finishWalk = () => {
+        this.tweens.delete('guide-walk')
+        this.finishWalk = null
+        this.guidePose('idle')
+        resolve()
+      }
+      this.tweens.set('guide-walk', {
+        start: performance.now(),
+        delay: 0,
+        duration: Math.max(650, Math.min(2700, distance * 460)),
+        ease: (t) => t,
+        update: (t) => {
+          let remaining = t * distance
+          for (const segment of segments) {
+            if (remaining <= segment.length + 0.001) {
+              guide.position.lerpVectors(segment.from, segment.to, Math.min(1, remaining / segment.length))
+              guide.rotation.y = Math.atan2(segment.to.x - segment.from.x, segment.to.z - segment.from.z)
+              break
+            }
+            remaining -= segment.length
+          }
+          const follow = Math.min(1, t * 3)
+          this.view = {
+            ...cameraStart,
+            tx: cameraStart.tx + (guide.position.x - cameraStart.tx) * follow,
+            tz: cameraStart.tz + (guide.position.z - cameraStart.tz) * follow,
+          }
+          this.applyCamera()
+          if (t === 1) this.finishWalk?.()
+        },
+      })
+      this.requestRender()
+    })
+  }
+
   dispose(): void {
     this.disposed = true
+    this.finishWalk?.()
+    this.guideMixer?.stopAllAction()
     cancelAnimationFrame(this.frame)
     const canvas = this.options.canvas
     canvas.removeEventListener('pointerdown', this.onPointerDown)
@@ -955,6 +1063,10 @@ export class CityScene {
     // 動畫的起點用 performance.now() 記錄，這裡也用同一個時鐘；
     // requestAnimationFrame 給的時間戳在部分環境的基準不同，混用會讓動畫停在第一格
     const now = performance.now()
+    if (this.finishWalk) {
+      this.guideMixer?.update(Math.min((now - this.lastGuideFrame) / 1000, 0.05))
+      this.lastGuideFrame = now
+    }
     for (const [key, tween] of this.tweens) {
       const elapsed = now - tween.start - tween.delay
       if (elapsed < 0) continue

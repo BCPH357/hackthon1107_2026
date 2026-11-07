@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:get/get.dart';
 import 'package:town_pass/gen/assets.gen.dart';
+import 'package:town_pass/page/city_service/model/my_service_model.dart';
+import 'package:town_pass/service/city_guide_site.dart';
 import 'package:town_pass/util/tp_app_bar.dart';
 import 'package:town_pass/util/tp_colors.dart';
 import 'package:town_pass/util/web_message_handler/tp_web_message_listener.dart';
@@ -77,15 +79,19 @@ class TPWebView extends StatelessWidget {
         controller: appBarController,
       ),
       body: TPInAppWebView(
-        onWebViewCreated: (controller) {
+        onWebViewCreated: (controller) async {
           webViewController.value = controller;
+          final requestedUrl = url;
           try {
-            controller.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+            final bundled = _useBundledLifeEvents && requestedUrl == lifeEventsServiceUrl
+                ? await CityGuideSite.instance.start()
+                : null;
+            await controller.loadUrl(urlRequest: URLRequest(url: WebUri(bundled?.toString() ?? requestedUrl)));
           } catch (_) {
-            controller.loadData(data: _failedToLoadUrlData(url: url));
+            await controller.loadData(data: _failedToLoadUrlData(url: requestedUrl));
           }
         },
-        onUpdateVisitedHistory: (_, __, ___) async {
+        onUpdateVisitedHistory: (_, _, _) async {
           canGoBack.value = await webViewController.value?.canGoBack() ?? false;
         },
         onTitleChanged: (_, title) {
@@ -110,6 +116,8 @@ class TPWebView extends StatelessWidget {
   }
 }
 
+const bool _useBundledLifeEvents = !bool.hasEnvironment('LIFE_EVENTS_URL');
+
 /// 可以使用相機與方向感測器（AR 方向指引）的網站：「一步一步來」正式網址、Cloudflare Pages 每次部署的預覽網址，
 /// 以及開發用的快速通道。相機畫面只在手機上顯示、不會上傳；系統層的相機權限仍由 iOS / Android 另外詢問使用者。
 const Set<String> _arTrustedHosts = {'townpass-life-events.pages.dev', 'localhost'};
@@ -119,7 +127,8 @@ const Set<String> _arTrustedHostSuffixes = {'.townpass-life-events.pages.dev', '
 /// 和外掛沒有設定這個回呼時的預設行為相同。
 bool _canUseArSensors(PermissionRequest request) {
   final String host = request.origin.host;
-  final bool trustedHost = _arTrustedHosts.contains(host) || _arTrustedHostSuffixes.any(host.endsWith);
+  final bool trustedHost = CityGuideSite.instance.ownsOrigin(request.origin) ||
+      _arTrustedHosts.contains(host) || _arTrustedHostSuffixes.any(host.endsWith);
   final bool onlyArResources = request.resources.isNotEmpty &&
       request.resources.every(
         (resource) =>
