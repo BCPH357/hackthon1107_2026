@@ -127,30 +127,30 @@ export const CITY_PLOTS: CityPlot[] = [
     row: 2,
     sign: 'facade',
     trees: [
-      { dx: -0.66, dz: 0.5 },
-      { dx: 0.66, dz: 0.5 },
+      { dx: -0.82, dz: 0.62 },
+      { dx: 0.82, dz: 0.62 },
     ],
   },
 ]
 
 /**
  * 街上的車輛與路燈（Kenney Car Kit、City Kit Roads），保留原本的顏色。
- * 車輛模型長約 3 單位，縮成 0.2 倍放進 0.5 寬的道路。rotation 0 是車頭朝 +Z（朝鏡頭）。
+ * 車輛模型長約 3 單位，縮成 0.2 倍放進 0.6 寬的道路。rotation 0 是車頭朝 +Z（朝鏡頭）。
  */
 export const PROPS: { model: string; x: number; z: number; rotation: number; scale: number }[] = [
   // 左右兩側的外環道路從鏡頭看不會被大樓擋住：救護車在照顧與健康街區旁，計程車在辦公大樓旁
-  { model: 'cars/ambulance', x: 3.22, z: 0.35, rotation: Math.PI, scale: 0.2 },
-  { model: 'cars/taxi', x: -3.22, z: -0.55, rotation: 0, scale: 0.2 },
-  { model: 'cars/sedan', x: 0.9, z: 3.22, rotation: -Math.PI / 2, scale: 0.2 },
+  { model: 'cars/ambulance', x: 3.92, z: 0.43, rotation: Math.PI, scale: 0.2 },
+  { model: 'cars/taxi', x: -3.92, z: -0.68, rotation: 0, scale: 0.2 },
+  { model: 'cars/sedan', x: 0.8, z: 3.92, rotation: -Math.PI / 2, scale: 0.2 },
   // 前方人行道的路燈，燈臂朝向馬路
-  { model: 'roads/light-square', x: -2.05, z: 3.64, rotation: 0, scale: 1 },
-  { model: 'roads/light-square', x: 0.05, z: 3.64, rotation: 0, scale: 1 },
-  { model: 'roads/light-square', x: 2.15, z: 3.64, rotation: 0, scale: 1 },
+  { model: 'roads/light-square', x: -2.54, z: 4.34, rotation: 0, scale: 1 },
+  { model: 'roads/light-square', x: 0.06, z: 4.34, rotation: 0, scale: 1 },
+  { model: 'roads/light-square', x: 2.66, z: 4.34, rotation: 0, scale: 1 },
 ]
 
-/** 街區間距：地塊 1.6 加道路 0.5 */
-export const PLOT_SIZE = 1.6
-export const PLOT_PITCH = 2.1
+/** 街區間距：地塊 2.0 加道路 0.6，大樓之間留寬一點，看得清楚哪一棟是哪一棟 */
+export const PLOT_SIZE = 2.0
+export const PLOT_PITCH = 2.6
 
 export function plotCenter(plot: Pick<CityPlot, 'col' | 'row'>): { x: number; z: number } {
   return { x: (plot.col - 1) * PLOT_PITCH, z: (plot.row - 1) * PLOT_PITCH }
@@ -158,39 +158,39 @@ export function plotCenter(plot: Pick<CityPlot, 'col' | 'row'>): { x: number; z:
 
 /** 外圈的背景天際線：後方與兩側的細長大樓 */
 export const SKYLINE: { model: string; x: number; z: number }[] = [
-  { model: 'low-detail-building-b', x: -3.9, z: -3.9 },
-  { model: 'low-detail-building-g', x: -2.8, z: -3.95 },
-  { model: 'low-detail-building-wide-a', x: -1.55, z: -3.95 },
-  { model: 'low-detail-building-a', x: -0.35, z: -3.9 },
-  { model: 'low-detail-building-l', x: 0.55, z: -3.95 },
-  { model: 'low-detail-building-d', x: 1.6, z: -3.9 },
-  { model: 'low-detail-building-b', x: 2.75, z: -3.95 },
-  { model: 'low-detail-building-g', x: 3.9, z: -3.9 },
-  { model: 'low-detail-building-d', x: -3.95, z: -2.6 },
-  { model: 'low-detail-building-l', x: -3.9, z: -1.35 },
-  { model: 'low-detail-building-a', x: 3.95, z: -2.6 },
-  { model: 'low-detail-building-l', x: 3.9, z: -1.35 },
+  { model: 'low-detail-building-b', x: -4.6, z: -4.6 },
+  { model: 'low-detail-building-g', x: -3.47, z: -4.65 },
+  { model: 'low-detail-building-wide-a', x: -1.92, z: -4.65 },
+  { model: 'low-detail-building-a', x: -0.43, z: -4.6 },
+  { model: 'low-detail-building-l', x: 0.68, z: -4.65 },
+  { model: 'low-detail-building-d', x: 1.98, z: -4.6 },
+  { model: 'low-detail-building-b', x: 3.4, z: -4.65 },
+  { model: 'low-detail-building-g', x: 4.6, z: -4.6 },
+  { model: 'low-detail-building-d', x: -4.65, z: -3.22 },
+  { model: 'low-detail-building-l', x: -4.6, z: -1.67 },
+  { model: 'low-detail-building-a', x: 4.65, z: -3.22 },
+  { model: 'low-detail-building-l', x: 4.6, z: -1.67 },
 ]
 
 /** 前方人行道的陽傘，增加生活感 */
 export const PARASOLS: { model: string; x: number; z: number }[] = [
-  { model: 'detail-parasol-a', x: -3.0, z: 3.95 },
-  { model: 'detail-parasol-b', x: -0.4, z: 3.95 },
-  { model: 'detail-parasol-a', x: 1.75, z: 3.95 },
+  { model: 'detail-parasol-a', x: -3.7, z: 4.65 },
+  { model: 'detail-parasol-b', x: -0.5, z: 4.65 },
+  { model: 'detail-parasol-a', x: 2.17, z: 4.65 },
 ]
 
 /** 樹的位置：前方人行道與兩側 */
 export const TREES: { x: number; z: number; scale: number }[] = [
-  { x: -3.9, z: 3.9, scale: 1 },
-  { x: -2.2, z: 3.95, scale: 0.85 },
-  { x: -1.3, z: 3.9, scale: 1.1 },
-  { x: 0.6, z: 3.95, scale: 0.9 },
-  { x: 2.7, z: 3.9, scale: 1 },
-  { x: 3.9, z: 3.95, scale: 0.85 },
-  { x: -3.95, z: 0.1, scale: 0.9 },
-  { x: -3.9, z: 1.6, scale: 1.05 },
-  { x: 3.95, z: 0.1, scale: 1 },
-  { x: 3.9, z: 1.6, scale: 0.9 },
+  { x: -4.6, z: 4.6, scale: 1 },
+  { x: -2.72, z: 4.65, scale: 0.85 },
+  { x: -1.61, z: 4.6, scale: 1.1 },
+  { x: 0.74, z: 4.65, scale: 0.9 },
+  { x: 3.34, z: 4.6, scale: 1 },
+  { x: 4.6, z: 4.65, scale: 0.85 },
+  { x: -4.65, z: 0.12, scale: 0.9 },
+  { x: -4.6, z: 1.98, scale: 1.05 },
+  { x: 4.65, z: 0.12, scale: 1 },
+  { x: 4.6, z: 1.98, scale: 0.9 },
 ]
 
 /** 模型所屬的套件：決定貼圖裡哪些區塊要換色 */

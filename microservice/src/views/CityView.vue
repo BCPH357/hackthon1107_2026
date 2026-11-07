@@ -8,7 +8,7 @@ import CityGuideDialog from '../components/CityGuideDialog.vue'
 import CityGuideStation from '../components/CityGuideStation.vue'
 import DisplayButton from '../components/DisplayButton.vue'
 import PageLayout from '../components/PageLayout.vue'
-import { CITY_PLOTS, CITY_THEMES, themeOf } from '../city/config'
+import { CITY_PLOTS, themeOf } from '../city/config'
 import { categoryProgress, findCategory, recommendedCategoryIds } from '../city/progress'
 import { CityScene } from '../city/scene'
 import { GUIDE_STATIONS, type GuideChoice } from '../city/guide'
@@ -24,6 +24,7 @@ const stage = ref<HTMLElement | null>(null)
 const canvas = ref<HTMLCanvasElement | null>(null)
 const sheet = ref<InstanceType<typeof BottomSheet> | null>(null)
 const guidePin = ref<HTMLButtonElement | null>(null)
+const controls = ref<HTMLElement | null>(null)
 const guideOpen = ref(false)
 const guideWalking = ref(false)
 type GuideStationState = { index: number; fullRoute: boolean; stepId?: string }
@@ -54,8 +55,6 @@ const loadPercent = ref(0)
 /** 字放大到 125% 以上，或螢幕太窄讓標籤排不開時，標籤改排在地圖下方 */
 const crowded = ref(false)
 const gridLabels = computed(() => crowded.value || status.value === 'unsupported' || status.value === 'error')
-
-const themes = Object.values(CITY_THEMES)
 
 // 依類別清單的順序：讀屏與 Tab 鍵的順序和「要辦的事」一致
 const plotIds = new Set(CITY_PLOTS.map((plot) => plot.categoryId))
@@ -191,6 +190,7 @@ onMounted(async () => {
 
   resizeObserver = new ResizeObserver(([entry]) => {
     scene?.resize(entry.contentRect.width, entry.contentRect.height)
+    updateFramePadding()
     scheduleCrowdCheck(250)
   })
   resizeObserver.observe(stage.value)
@@ -209,6 +209,7 @@ onMounted(async () => {
       })
       .catch(() => undefined)
     await nextTick()
+    updateFramePadding()
     measurePins()
     layoutPins()
     // 等大樓長完再檢查標籤排不排得開
@@ -234,6 +235,14 @@ watch(selectedId, (id, previous) => {
   // 抽屜開著時換類別，焦點移到新的標題
   if (id && previous) nextTick(() => sheet.value?.focus())
 })
+
+/** 預設視角的上下留白：標籤浮在屋頂上時上方留給標籤，排在地圖下方時只留一點；下方留給按鈕列（字放大時按鈕列也變高） */
+function updateFramePadding(): void {
+  if (!scene || !stage.value) return
+  // .city__stage 是 position: relative，按鈕列的 offsetTop 就是它在地圖裡的位置
+  const bottom = controls.value ? stage.value.clientHeight - controls.value.offsetTop : 68
+  scene.setFramePadding(gridLabels.value ? 24 : 72, bottom)
+}
 
 /** 抽屜蓋住地圖的高度，讓選取的大樓移到抽屜上方 */
 function onSheetHeight(px: number): void {
@@ -370,6 +379,7 @@ async function checkCrowded(): Promise<void> {
 
 // 改成排在下方時，清掉浮動定位的 style
 watch(gridLabels, async (grid) => {
+  updateFramePadding()
   if (!grid) return
   await nextTick()
   for (const el of pinEls.values()) {
@@ -387,26 +397,12 @@ watch(gridLabels, async (grid) => {
       <header class="city__header" :inert="guideWalking" :aria-hidden="guideWalking">
         <div class="city__header-content">
           <div class="city__tools"><DisplayButton /></div>
-          <div class="city__head">
-            <div class="city__head-row">
-              <h1 class="city__title">點一棟大樓，看看要辦的事</h1>
-              <RouterLink to="/events" class="city__list-link">改用清單</RouterLink>
-            </div>
-            <button type="button" class="btn btn--primary guide-entry" @click="openGuide">
-              問問城市嚮導
-            </button>
-            <p v-if="status === 'ready'" class="city__hint">兩指可以放大縮小、旋轉，也可以用地圖下方的按鈕</p>
-            <ul class="legend" aria-label="大樓顏色代表的主題">
-              <li v-for="theme in themes" :key="theme.key" class="legend__item" :style="{ '--accent': theme.accent }">
-                <span class="legend__dot" aria-hidden="true" />
-                {{ theme.title }}
-              </li>
-            </ul>
-          </div>
+          <!-- 畫面上不放說明文字，地圖留大一點；標題留給讀屏，換頁時焦點也會移到這裡 -->
+          <h1 class="visually-hidden">城市地圖：點一棟大樓，看看要辦的事</h1>
         </div>
       </header>
 
-      <div class="city__map">
+      <div class="city__map" :class="{ 'city__map--grid': gridLabels }">
         <div ref="stage" class="city__stage" :class="{ 'city__stage--static': status === 'unsupported' || status === 'error' }">
           <div class="city__clouds" aria-hidden="true" />
           <!-- 3D 畫面只是視覺；能操作的是下面的標籤按鈕 -->
@@ -416,7 +412,7 @@ watch(gridLabels, async (grid) => {
             ref="guidePin"
             class="guide-pin"
             type="button"
-            aria-label="問問城市嚮導"
+            aria-label="問我：問問城市嚮導"
             @click="openGuide"
           >問我</button>
           <p v-if="guideWalking" class="guide-walking card" role="status">嚮導帶你過去⋯</p>
@@ -427,7 +423,7 @@ watch(gridLabels, async (grid) => {
             <span class="city__loading-bar" aria-hidden="true"><span :style="{ width: `${loadPercent}%` }" /></span>
           </div>
           <!-- 不會雙指操作也能調整視角（WCAG 2.5.1：手勢要有單指的替代方式） -->
-          <div v-if="status === 'ready'" class="map-controls" :inert="guideWalking" :aria-hidden="guideWalking" role="toolbar" aria-label="調整地圖視角">
+          <div v-if="status === 'ready'" ref="controls" class="map-controls" :inert="guideWalking" :aria-hidden="guideWalking" role="toolbar" aria-label="調整地圖視角">
             <button type="button" class="map-controls__btn" aria-label="縮小" @click="scene?.zoomBy(1 / 1.4)">
               <AppIcon name="minus" size="1.375rem" />
             </button>
@@ -520,7 +516,6 @@ watch(gridLabels, async (grid) => {
 </template>
 
 <style scoped>
-.guide-entry { align-self: flex-start; }
 .guide-pin {
   position: absolute; left: 0; top: 0; z-index: 3; visibility: hidden;
   min-height: var(--tap); padding: 0.25rem 0.65rem; border: 2px solid white;
@@ -549,7 +544,7 @@ watch(gridLabels, async (grid) => {
 .city__tools {
   display: flex;
   justify-content: flex-end;
-  padding: 0.75rem var(--gutter) 0;
+  padding: 0.75rem var(--gutter);
   background: var(--c-gray-50);
 }
 
@@ -561,60 +556,6 @@ watch(gridLabels, async (grid) => {
 .city--walking .city__header-content {
   opacity: 0;
   transform: translateY(-1rem);
-}
-
-.city__head {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  width: 100%;
-  max-width: var(--content-max);
-  margin: 0 auto;
-  padding: 1rem var(--gutter) 0.75rem;
-}
-
-.city__head-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.25rem 0.75rem;
-}
-
-/* TPTextStyles title（18・w600） */
-.city__title {
-  font-size: var(--fs-title);
-  font-weight: 600;
-  line-height: 1.4;
-}
-
-.city__list-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: var(--tap);
-  font-weight: 600;
-  color: var(--c-primary-700);
-}
-
-.legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem 0.875rem;
-}
-
-.legend__item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: var(--fs-body);
-  color: var(--c-gray-700);
-}
-
-.legend__dot {
-  width: 0.75rem;
-  height: 0.75rem;
-  border-radius: 0.1875rem;
-  background: var(--accent);
 }
 
 .city__map {
@@ -632,6 +573,11 @@ watch(gridLabels, async (grid) => {
   min-height: 22rem;
   overflow: hidden;
   background: linear-gradient(180deg, var(--c-primary-50) 0%, var(--c-white) 55%);
+}
+
+/* 標籤排在地圖下方時（字放大），地圖不必和標籤分高度：撐到大半個畫面，類別清單往下捲就看得到 */
+.city__map--grid .city__stage {
+  min-height: max(22rem, 70svh);
 }
 
 .city__stage--static {
@@ -658,11 +604,6 @@ watch(gridLabels, async (grid) => {
 
 .city--walking .city__canvas {
   pointer-events: none;
-}
-
-.city__hint {
-  font-size: var(--fs-caption);
-  color: var(--c-gray-600);
 }
 
 /* 地圖下方置中的按鈕列；抽屜打開時被抽屜蓋住 */
@@ -933,7 +874,7 @@ watch(gridLabels, async (grid) => {
 }
 
 /* 浮在大樓屋頂上：按鈕本身縮成錨點，晶片往上偏移 --lift、左右偏移 --shift
- * 拉近時標籤可能移出地圖，超出的部分裁掉，不蓋到上方的標題與圖例 */
+ * 拉近時標籤可能移出地圖，超出的部分裁掉，不蓋到上方的工具列 */
 .pins--overlay {
   position: absolute;
   inset: 0;

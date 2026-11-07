@@ -71,11 +71,11 @@ const CAMERA_DISTANCE = 40
 const MIN_ZOOM = 0.55
 const MAX_ZOOM = 4
 /** 鏡頭中心能移動的範圍，城市不會被拖到畫面外找不回來 */
-const PAN_LIMIT = 5
+const PAN_LIMIT = 6
 /** 單指移動超過這個距離才算拖曳，否則當作點選 */
 const DRAG_THRESHOLD = 8
 /** 城市底座的邊長：旋轉到任何角度都看得到完整的城市 */
-const BASE_SIZE = 11
+const BASE_SIZE = 12.4
 /** 主角大樓的縮放：讓大樓佔滿地塊 */
 const LANDMARK_SCALE = 1.15
 /** 選取時拉近的倍率 */
@@ -254,6 +254,7 @@ export class CityScene {
     null
   private size = { width: 1, height: 1 }
   private insetBottom = 0
+  private framePad = { top: 72, bottom: 68 }
   private selected: string | null = null
   private frame = 0
   private ready = false
@@ -334,6 +335,21 @@ export class CityScene {
     if (landmark) this.view = this.selectionView(landmark)
     else if (!this.userMoved) this.view = { ...this.home }
     this.clampView()
+    this.applyCamera()
+    this.requestRender()
+  }
+
+  /**
+   * 預設視角上下要留的空間（px）：上方給浮在屋頂上的標籤（標籤改排在地圖下方時只留一點），
+   * 下方給視角按鈕列（字放大時按鈕列也變高）
+   */
+  setFramePadding(top: number, bottom: number): void {
+    if (Math.abs(top - this.framePad.top) < 1 && Math.abs(bottom - this.framePad.bottom) < 1) return
+    this.framePad = { top, bottom }
+    if (!this.ready) return
+    this.updateHome()
+    if (this.selected || this.userMoved) return
+    this.view = { ...this.home }
     this.applyCamera()
     this.requestRender()
   }
@@ -589,10 +605,10 @@ export class CityScene {
     sun.position.set(-5, 10, 8)
     sun.castShadow = true
     sun.shadow.mapSize.set(1024, 1024)
-    sun.shadow.camera.left = -7
-    sun.shadow.camera.right = 7
-    sun.shadow.camera.top = 7
-    sun.shadow.camera.bottom = -7
+    sun.shadow.camera.left = -8
+    sun.shadow.camera.right = 8
+    sun.shadow.camera.top = 8
+    sun.shadow.camera.bottom = -8
     sun.shadow.camera.near = 1
     sun.shadow.camera.far = 40
     sun.shadow.bias = -0.0006
@@ -901,7 +917,7 @@ export class CityScene {
   /** 剛好放進整座城市的視角；上方留空間給最高那棟的標籤，下方留給視角按鈕列 */
   private updateHome(): void {
     const { width: W, height: H } = this.size
-    const pad = { x: 12, top: 72, bottom: 68 }
+    const pad = { x: 12, ...this.framePad }
     const { right, up } = axesAt(DEFAULT_YAW)
     let minX = Infinity
     let maxX = -Infinity
