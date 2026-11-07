@@ -57,6 +57,30 @@ ngrok http 5173
 - 使用者填的身分與進度只存在手機的 localStorage，不會上傳。
 - 地圖只連到 OpenStreetMap。
 
+## 城市地圖
+
+每一頁右下角都有「城市地圖」按鈕（`src/components/CityLink.vue`），網址是 `#/city`。九個類別各是一棟大樓，依主題分四色：家庭（橘）、照顧與健康（藍綠）、工作與居住（黃）、身後事（灰），顏色全部取自 TownPass 色票。點大樓或標籤會從底部滑出抽屜，列出這一類的事與進度。
+
+- 從事件或步驟頁點按鈕，會帶著 `?cat=類別` 進來，直接打開那件事所在的大樓。
+- 進度和清單共用 `stores/progress`：在步驟頁打勾，地圖上的標籤與抽屜跟著更新。
+- 選取的類別記在網址，Android 返回鍵會先關抽屜。
+- 標籤是真正的按鈕，鍵盤與讀屏都能操作。字放大到 125% 以上，或螢幕太窄排不開時，標籤改排在地圖下方。
+- 手機不支援 WebGL 2 或模型載入失敗時，只顯示類別按鈕，功能照常。
+- 開啟「減少動態效果」時不播放大樓長出來與鏡頭移動的動畫。
+
+程式在 `src/city/`：
+
+| 檔案 | 內容 |
+| --- | --- |
+| `config.ts` | 主題配色、九棟大樓的模型與位置、背景天際線與樹 |
+| `scene.ts` | Three.js 場景、鏡頭、點選與動畫；只在畫面需要變化時才重畫 |
+| `textures.ts` | 依主題重畫模型貼圖的牆面與招牌顏色 |
+| `progress.ts` | 每個類別的進度與推薦 |
+
+模型在 `public/city/models/`，取自 Kenney City Kit Commercial 2.1，總共約 1.5 MB。套件附的 `variation-a.png` 已改名為模型指定的 `Textures/colormap.png`。要換模型時，請挑淺色外牆的款式：`building-h` 這類外牆是固定的深灰磚，換不了色。
+
+Three.js 打包成獨立的檔案（壓縮後約 170 KB），只有打開城市地圖時才會下載。
+
 ## 第三方套件
 
 | 套件 | 版本 | 授權 |
@@ -67,6 +91,10 @@ ngrok http 5173
 | @vitejs/plugin-vue | 6.0 | MIT |
 | typescript | 5.9 | Apache-2.0 |
 | vue-tsc | 3.3 | MIT |
+| three | 0.187 | MIT |
+| @types/three | 0.187 | MIT |
+
+城市地圖的 3D 模型取自 [Kenney City Kit Commercial 2.1](https://kenney.nl/assets/city-kit-commercial)，授權為 CC0（公眾領域），授權檔在 `public/city/KENNEY-LICENSE.txt`。
 
 沒有使用圖示套件：
 

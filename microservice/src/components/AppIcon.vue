@@ -16,6 +16,8 @@ export type IconName =
   | 'check-square'
   | 'speaker'
   | 'stop'
+  | 'city'
+  | 'close'
 
 withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' })
 </script>
@@ -76,5 +78,12 @@ withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' 
       <rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" stroke="currentColor" />
       <path d="M8 12.3l2.8 2.8L16.2 9.5" stroke="#fff" />
     </template>
+    <template v-else-if="name === 'city'">
+      <path d="M3 21h18" />
+      <path d="M5 21V11l5-2.5V21" />
+      <path d="M10 21V4.5h9V21" />
+      <path d="M13.5 8.5h2M13.5 12.5h2M13.5 16.5h2" />
+    </template>
+    <path v-else-if="name === 'close'" d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
   </svg>
 </template>

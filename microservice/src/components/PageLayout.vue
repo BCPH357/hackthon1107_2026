@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
+import CityLink from './CityLink.vue'
 import DisplayButton from './DisplayButton.vue'
 import EasyReadToggle from './EasyReadToggle.vue'
 import { isInApp } from '../services/townpass'
@@ -15,6 +16,10 @@ const props = defineProps<{
   hideDisplayButton?: boolean
   /** 有易讀版內容的頁面（步驟清單、步驟詳情）顯示「易讀版」開關 */
   showEasyRead?: boolean
+  /** 內容滿版：不留內距、不限寬度（城市地圖用） */
+  flush?: boolean
+  /** 不顯示「城市地圖」浮動按鈕（城市地圖本身用） */
+  hideCityLink?: boolean
 }>()
 
 const route = useRoute()
@@ -43,8 +48,8 @@ function goBack() {
       <span class="preview-bar__title">{{ title }}</span>
     </header>
 
-    <main class="page__main">
-      <!-- 城市通的標題列由 App 繪製，網頁無法放按鈕進去，所以放在內容最上方 -->
+    <main class="page__main" :class="{ 'page__main--flush': flush, 'page__main--with-city-link': !hideCityLink }">
+      <!-- 城市通的標題列由 App 繪製，網頁無法放按鈕進去，所以放在內容最上方；城市地圖也保留，看不清楚的人在地圖上也要能調字級 -->
       <div v-if="!hideDisplayButton || showEasyRead" class="page__tools">
         <EasyReadToggle v-if="showEasyRead" />
         <DisplayButton v-if="!hideDisplayButton" />
@@ -52,11 +57,14 @@ function goBack() {
       <slot />
     </main>
 
+    <!-- 隨時都能跳進城市地圖：有固定底部按鈕時貼在它上方，沒有時浮在右下角 -->
     <footer v-if="$slots.footer" class="page__footer">
+      <CityLink v-if="!hideCityLink" class="page__city-link page__city-link--docked" />
       <div class="page__footer-inner">
         <slot name="footer" />
       </div>
     </footer>
+    <CityLink v-else-if="!hideCityLink" class="page__city-link page__city-link--floating" />
   </div>
 </template>
 
@@ -123,6 +131,13 @@ function goBack() {
   margin: -0.5rem 0 -0.75rem;
 }
 
+/* 滿版頁面（城市地圖）沒有內距，按鈕列自己留左右與上方空間，不壓到下面的內容 */
+.page__main--flush > .page__tools {
+  margin: 0;
+  padding: 0.75rem var(--gutter) 0;
+  background: var(--c-gray-50);
+}
+
 .page__footer {
   position: sticky;
   bottom: 0;
@@ -143,5 +158,36 @@ function goBack() {
 /* 有固定底部按鈕時，內容底部不必再留安全區域 */
 .page__main:has(+ .page__footer) {
   padding-bottom: 2rem;
+}
+
+/* 城市地圖按鈕會蓋住內容最底下，多留空間讓最後的內容能捲到按鈕上方 */
+.page__main--with-city-link {
+  padding-bottom: calc(5.5rem + var(--safe-bottom));
+}
+
+.page__main--with-city-link:has(+ .page__footer) {
+  padding-bottom: 5rem;
+}
+
+.page__main--flush {
+  max-width: none;
+  padding: 0;
+  gap: 0;
+}
+
+.page__city-link {
+  z-index: 6;
+}
+
+.page__city-link--docked {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(100% + 0.75rem);
+}
+
+.page__city-link--floating {
+  position: fixed;
+  right: var(--gutter);
+  bottom: calc(1rem + var(--safe-bottom));
 }
 </style>
