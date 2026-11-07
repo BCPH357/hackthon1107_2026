@@ -57,7 +57,11 @@ ngrok http 5173
 | typescript | 5.9 | Apache-2.0 |
 | vue-tsc | 3.3 | MIT |
 
-圖示為自行繪製的 SVG，沒有使用圖示套件。
+沒有使用圖示套件：
+
+- 事件與類別的圖示在 `src/assets/icons/`。`icon_*.svg` 直接複製自 TownPass 的 `assets/svg/`，來自城市通 Figma UI Kit。
+- `custom_*.svg` 是 UI Kit 沒有的概念，包括嬰兒車、輪椅、長者、照顧、公事包、蓮花。依 UI Kit 的規格自行繪製：24×24、線寬 2、圓角端點、深灰 `#434344` 搭配主色 `#2EB6C7`。
+- 介面上的箭頭、電話等小圖示寫在 `src/components/AppIcon.vue`，也是自行繪製。
 
 ## 已知問題
 
