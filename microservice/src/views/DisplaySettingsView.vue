@@ -56,7 +56,7 @@ function finish() {
   <PageLayout title="字級與對比" fallback-back="/" hide-display-button>
     <div class="stack">
       <h1 class="page-title">{{ isFirstTime ? '先把畫面調成好讀的樣子' : '字級與對比' }}</h1>
-      <p class="lead">選一個你看得最清楚的樣子，畫面會馬上改變。之後每一頁上方的「字級與對比」都可以再調，步驟頁上方也有「易讀版」可以一鍵切換。</p>
+      <p class="lead">選一個你看得最清楚的樣子，畫面會馬上改變。之後每一頁上方的「Aa」按鈕都可以再調，步驟頁上方也有「易讀版」可以一鍵切換。</p>
     </div>
 
     <OptionGroup v-model="fontScale" legend="字的大小" :options="FONT_SCALE_OPTIONS" inline />

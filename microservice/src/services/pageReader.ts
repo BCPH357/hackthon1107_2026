@@ -15,6 +15,7 @@ const SKIP = [
   '.visually-hidden',
   '.badge--draft',
   '.page__tools',
+  '.display-btn',
   '.page__version',
   '.preview-bar',
   '.city-link',
