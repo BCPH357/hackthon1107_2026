@@ -18,6 +18,7 @@ abstract class TPWebMessageListener {
         QRCodeScanMessageHandler(),
         BleShareStartMessageHandler(),
         BleShareStopMessageHandler(),
+        BleHandoverShareStartMessageHandler(),
         BleReceiveMessageHandler(),
       ];
 

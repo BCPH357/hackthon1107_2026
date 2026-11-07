@@ -300,7 +300,27 @@ class BleShareStopMessageHandler extends TPWebMessageHandler {
   }
 }
 
-/// 幫家人辦：搜尋附近正在傳送的家人並讀取基本資料
+/// 交棒：開始用藍牙傳送一件事的交棒票。message 是 {"v":1,"caseId","token","key"}，回覆方式同 ble_share_start
+class BleHandoverShareStartMessageHandler extends TPWebMessageHandler {
+  @override
+  String get name => 'ble_handover_share_start';
+
+  @override
+  Future<void> handle({
+    required Object? message,
+    required WebUri? sourceOrigin,
+    required bool isMainFrame,
+    required onReply,
+  }) async {
+    await BleShareService.instance.startHandoverShare(
+      message,
+      (event) => onReply?.call(replyWebMessage(data: event)),
+    );
+  }
+}
+
+/// 搜尋附近正在傳送的家人並讀取資料。
+/// message 為 {"kind":"handover"} 時接收交棒票，其他情況接收基本資料（幫家人辦）
 class BleReceiveMessageHandler extends TPWebMessageHandler {
   @override
   String get name => 'ble_receive';
@@ -312,7 +332,9 @@ class BleReceiveMessageHandler extends TPWebMessageHandler {
     required bool isMainFrame,
     required onReply,
   }) async {
-    final result = await BleShareService.instance.receive();
+    final BleShareKind kind =
+        message is Map && message['kind'] == 'handover' ? BleShareKind.handover : BleShareKind.basicInfo;
+    final result = await BleShareService.instance.receive(kind: kind);
     onReply?.call(replyWebMessage(data: result));
   }
 }

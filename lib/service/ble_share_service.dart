@@ -10,21 +10,37 @@ import 'package:get/get.dart';
 import 'package:town_pass/bean/account.dart';
 import 'package:town_pass/service/account_service.dart';
 
-/// 幫家人辦：用藍牙（BLE）把台北通帳號的基本資料直接傳給旁邊家人的手機，不經過伺服器。
+/// 用藍牙（BLE）傳的兩種內容，各用一個服務 ID，接收方只會連到同一種的傳送方
+enum BleShareKind {
+  /// 幫家人辦：長輩的基本資料（年齡、戶籍等），帶入「幫家人辦」的基本資料頁
+  basicInfo,
+
+  /// 交棒：一件事的交棒票（caseId、存取權杖、金鑰），子女拿票到伺服器同步進度
+  handover,
+}
+
+/// 幫家人辦：用藍牙把資料直接傳給旁邊家人的手機。
 ///
-/// - 傳送方（被幫的人）當 BLE peripheral：廣播專屬服務 ID，提供一個可讀的資料欄位和一個可寫的回條欄位。
-/// - 接收方（幫忙的人）當 BLE central：搜尋服務 ID、連上訊號最強的手機、讀資料，再寫回條讓傳送方知道已送達。
+/// - 傳送方（長輩）當 BLE peripheral：廣播服務 ID，提供一個可讀的資料欄位和一個可寫的回條欄位。
+/// - 接收方（子女）當 BLE central：搜尋服務 ID、連上訊號最強的手機、讀資料，再寫回條讓傳送方知道已送達。
+/// - 傳一次就斷開；藍牙只負責「第一次見面」，之後的進度由伺服器同步。
 ///
-/// 傳送內容依白名單組成，不含身分證字號、電話、email、詳細地址；
-/// 欄位要和 microservice/src/services/townpass.ts 的 `SharedBasicInfo` 一致。
+/// 基本資料依白名單組成，不含身分證字號、電話、email、詳細地址；
+/// 欄位要和 microservice/src/services/townpass.ts 的 `SharedBasicInfo`、`HandoverTicket` 一致。
 class BleShareService {
   BleShareService._();
 
   static final BleShareService instance = BleShareService._();
 
-  static final UUID serviceUuid = UUID.fromString('6f1c0001-3b5e-4c2a-9d7e-5a1b2c3d4e5f');
+  static final Map<BleShareKind, UUID> _serviceUuids = {
+    BleShareKind.basicInfo: UUID.fromString('6f1c0001-3b5e-4c2a-9d7e-5a1b2c3d4e5f'),
+    BleShareKind.handover: UUID.fromString('6f1c0101-3b5e-4c2a-9d7e-5a1b2c3d4e5f'),
+  };
   static final UUID dataUuid = UUID.fromString('6f1c0002-3b5e-4c2a-9d7e-5a1b2c3d4e5f');
   static final UUID ackUuid = UUID.fromString('6f1c0003-3b5e-4c2a-9d7e-5a1b2c3d4e5f');
+
+  /// BLE 單一欄位最多 512 bytes；讀取時會依 offset 分段讀完，但不能超過這個上限
+  static const int maxPayloadBytes = 512;
 
   /// 傳送方最多等多久沒人接收就自動停止
   static const Duration shareDuration = Duration(seconds: 60);
@@ -36,6 +52,9 @@ class BleShareService {
   static const Duration pickNearestWindow = Duration(milliseconds: 1500);
 
   static const Duration _stepTimeout = Duration(seconds: 10);
+
+  static final RegExp _caseIdPattern = RegExp(r'^[A-Za-z0-9_-]{8,64}$');
+  static final RegExp _base64UrlPattern = RegExp(r'^[A-Za-z0-9_-]+$');
 
   // 第一次建立時 iOS 會詢問藍牙權限，所以用到才建立
   PeripheralManager? _peripheralManager;
@@ -53,15 +72,42 @@ class BleShareService {
 
   // ---------------- 傳送方 ----------------
 
-  /// 開始傳送。透過 [emit] 依序回報：advertising（附核對代碼）→ sent／timeout，失敗時回報 unavailable／error。
+  /// 傳送基本資料。透過 [emit] 依序回報：advertising（附核對代碼）→ sent／timeout，失敗時回報 unavailable／error。
   Future<void> startShare(void Function(Map<String, Object?> event) emit) async {
-    await stopShare();
-
     final Account? account = Get.find<AccountService>().account;
     if (account == null) {
+      await stopShare();
       emit({'state': 'unavailable', 'reason': 'noAccount'});
       return;
     }
+    await _startSharing(
+      kind: BleShareKind.basicInfo,
+      buildPayload: (code) => sharedPayload(account, code),
+      emit: emit,
+    );
+  }
+
+  /// 傳送交棒票。[ticket] 由網頁產生：{"v":1,"caseId","token","key"}，回報方式同 [startShare]。
+  Future<void> startHandoverShare(Object? ticket, void Function(Map<String, Object?> event) emit) async {
+    final Map<String, Object?>? valid = validHandoverTicket(ticket);
+    if (valid == null) {
+      await stopShare();
+      emit({'state': 'error', 'message': 'invalid ticket'});
+      return;
+    }
+    await _startSharing(
+      kind: BleShareKind.handover,
+      buildPayload: (code) => {...valid, 'code': code},
+      emit: emit,
+    );
+  }
+
+  Future<void> _startSharing({
+    required BleShareKind kind,
+    required Map<String, Object?> Function(String code) buildPayload,
+    required void Function(Map<String, Object?> event) emit,
+  }) async {
+    await stopShare();
 
     final String? reason = await _unavailableReason(_peripheral);
     if (reason != null) {
@@ -70,7 +116,11 @@ class BleShareService {
     }
 
     final String code = (Random.secure().nextInt(9000) + 1000).toString();
-    final Uint8List value = Uint8List.fromList(utf8.encode(jsonEncode(sharedPayload(account, code))));
+    final Uint8List value = Uint8List.fromList(utf8.encode(jsonEncode(buildPayload(code))));
+    if (value.length > maxPayloadBytes) {
+      emit({'state': 'error', 'message': 'payload too large: ${value.length} bytes'});
+      return;
+    }
 
     _emitShareEvent = emit;
     _readSubscription = _peripheral.characteristicReadRequested.listen((event) async {
@@ -97,6 +147,7 @@ class BleShareService {
       await _finishShare({'state': 'sent'});
     });
 
+    final UUID serviceUuid = _serviceUuids[kind]!;
     try {
       await _peripheral.removeAllServices();
       await _peripheral.addService(
@@ -174,6 +225,22 @@ class BleShareService {
     };
   }
 
+  /// 檢查網頁送來的交棒票，只留下需要的欄位；格式不對回傳 null
+  @visibleForTesting
+  static Map<String, Object?>? validHandoverTicket(Object? ticket) {
+    if (ticket is! Map) return null;
+    final Object? caseId = ticket['caseId'];
+    final Object? token = ticket['token'];
+    final Object? key = ticket['key'];
+    if (ticket['v'] != 1) return null;
+    if (caseId is! String || !_caseIdPattern.hasMatch(caseId)) return null;
+    if (token is! String || token.length < 16 || token.length > 128 || !_base64UrlPattern.hasMatch(token)) {
+      return null;
+    }
+    if (key is! String || key.length < 16 || key.length > 128 || !_base64UrlPattern.hasMatch(key)) return null;
+    return {'v': 1, 'caseId': caseId, 'token': token, 'key': key};
+  }
+
   /// 由「1988/12/12」或「1988-12-12」格式的生日算出足歲，與 microservice/src/utils/age.ts 相同
   @visibleForTesting
   static int? ageFromBirthday(String birthday, {DateTime? today}) {
@@ -190,21 +257,22 @@ class BleShareService {
 
   // ---------------- 接收方 ----------------
 
-  /// 搜尋附近正在傳送的手機並讀取資料。
+  /// 搜尋附近正在傳送 [kind] 的手機並讀取資料。
   /// 回傳 found（附核對代碼與資料）、notFound、unavailable 或 error。
-  Future<Map<String, Object?>> receive() async {
+  Future<Map<String, Object?>> receive({BleShareKind kind = BleShareKind.basicInfo}) async {
     if (_receiving) return {'state': 'error', 'message': 'busy'};
     _receiving = true;
     try {
       final String? reason = await _unavailableReason(_central);
       if (reason != null) return {'state': 'unavailable', 'reason': reason};
 
-      final List<Peripheral> candidates = await _discoverNearest();
+      final UUID serviceUuid = _serviceUuids[kind]!;
+      final List<Peripheral> candidates = await _discoverNearest(serviceUuid);
       if (candidates.isEmpty) return {'state': 'notFound'};
 
       // 最近的那支讀不到時，再試第二近的
       for (final Peripheral peripheral in candidates.take(2)) {
-        final Map<String, Object?>? result = await _readFrom(peripheral);
+        final Map<String, Object?>? result = await _readFrom(peripheral, serviceUuid, kind);
         if (result != null) return result;
       }
       return {'state': 'error', 'message': 'read failed'};
@@ -217,7 +285,7 @@ class BleShareService {
   }
 
   /// 回傳搜尋到的手機，訊號由強到弱排序
-  Future<List<Peripheral>> _discoverNearest() async {
+  Future<List<Peripheral>> _discoverNearest(UUID serviceUuid) async {
     final Map<UUID, DiscoveredEventArgs> found = {};
     final Completer<void> firstFound = Completer<void>();
     final subscription = _central.discovered.listen((event) {
@@ -248,7 +316,7 @@ class BleShareService {
     return sorted.map((event) => event.peripheral).toList();
   }
 
-  Future<Map<String, Object?>?> _readFrom(Peripheral peripheral) async {
+  Future<Map<String, Object?>?> _readFrom(Peripheral peripheral, UUID serviceUuid, BleShareKind kind) async {
     try {
       await _central.connect(peripheral).timeout(_stepTimeout);
       final List<GATTService> services = await _central.discoverGATT(peripheral).timeout(_stepTimeout);
@@ -260,6 +328,11 @@ class BleShareService {
       final Uint8List bytes = await _central.readCharacteristic(peripheral, dataCharacteristic).timeout(_stepTimeout);
       final Object? decoded = jsonDecode(utf8.decode(bytes));
       if (decoded is! Map<String, dynamic> || decoded['v'] != 1) return null;
+      final Object? code = decoded['code'];
+      // 交棒票要通過和傳送方相同的格式檢查
+      final Map<String, Object?>? data =
+          kind == BleShareKind.handover ? validHandoverTicket(decoded) : (Map.of(decoded)..remove('code'));
+      if (data == null) return null;
 
       // 寫回條讓傳送方知道已送達；失敗不影響接收結果
       final GATTCharacteristic? ackCharacteristic =
@@ -279,8 +352,7 @@ class BleShareService {
         }
       }
 
-      final Object? code = decoded.remove('code');
-      return {'state': 'found', 'code': code?.toString() ?? '', 'data': decoded};
+      return {'state': 'found', 'code': code?.toString() ?? '', 'data': data};
     } catch (error) {
       debugPrint('BleShareService read failed: $error');
       return null;

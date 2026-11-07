@@ -2,11 +2,16 @@ import { nextTick } from 'vue'
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { APP_NAME } from './config'
 import { findEvent } from './data/lifeEvents'
+import { findLink } from './stores/cases'
 import { identity } from './stores/identity'
 import { lastEventId } from './stores/progress'
 import DisplaySettingsView from './views/DisplaySettingsView.vue'
 import EventView from './views/EventView.vue'
 import EventsView from './views/EventsView.vue'
+import FamilyCasesView from './views/FamilyCasesView.vue'
+import FamilyCaseView from './views/FamilyCaseView.vue'
+import HandoverReceiveView from './views/HandoverReceiveView.vue'
+import HandoverView from './views/HandoverView.vue'
 import HomeView from './views/HomeView.vue'
 import IdentityBasicView from './views/IdentityBasicView.vue'
 import IdentityHealthView from './views/IdentityHealthView.vue'
@@ -33,6 +38,15 @@ const routes: RouteRecordRaw[] = [
   { path: '/identity/life', component: IdentityLifeView, meta: { title: '你的情況', needsForWhom: true } },
   { path: '/identity/summary', component: IdentitySummaryView, meta: { title: '你的情況', needsForWhom: true } },
   { path: '/share', component: ShareView, meta: { title: '傳給家人' } },
+  // 交棒：長輩把一件事裡做不到的步驟交給子女，子女在「家人交給我的事」看進度、打勾
+  { path: '/handover/receive', component: HandoverReceiveView, meta: { title: '接收家人交棒' } },
+  { path: '/family', component: FamilyCasesView, meta: { title: '家人交給我的事' } },
+  {
+    path: '/family/:caseId',
+    component: FamilyCaseView,
+    props: true,
+    beforeEnter: (to) => (findLink('family', String(to.params.caseId)) ? true : '/family'),
+  },
   { path: '/events', component: EventsView, meta: { title: '要辦的事' } },
   // 城市地圖用到 Three.js（壓縮後約 150 KB），獨立打包：沒打開地圖的人不必下載
   { path: '/city', component: () => import('./views/CityView.vue'), meta: { title: '城市地圖' } },
@@ -41,6 +55,13 @@ const routes: RouteRecordRaw[] = [
     component: EventView,
     props: true,
     beforeEnter: (to) => (findEvent(String(to.params.eventId)) ? true : '/events'),
+  },
+  {
+    path: '/events/:eventId/handover',
+    component: HandoverView,
+    props: true,
+    meta: { title: '交棒給家人' },
+    beforeEnter: (to) => (findEvent(String(to.params.eventId))?.steps?.length ? true : '/events'),
   },
   {
     path: '/events/:eventId/steps/:stepId',

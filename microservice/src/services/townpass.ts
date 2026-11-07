@@ -5,6 +5,7 @@
 
 import { showToast } from '../stores/toast'
 import type { TownPassService } from '../data/townpassServices'
+import { readJson, writeJson } from '../utils/storage'
 
 type MessageListener = (event: MessageEvent<string>) => void
 
@@ -189,6 +190,62 @@ export async function receiveBleShare(): Promise<{ result: BleReceiveResult; moc
     return { result: { state: 'found', code: '4821', data: MOCK_SHARED }, mocked: true }
   }
   const result = await request<BleReceiveResult>('ble_receive', null, 35000)
+  return { result: result ?? { state: 'error', message: 'timeout' }, mocked: false }
+}
+
+// ---- 藍牙交棒（長輩把一件事交給子女）----
+// 藍牙只傳「交棒票」：案件 id、存取權杖、金鑰，約 200 bytes（BLE 單一欄位上限 512 bytes）。
+// 案件內容放在伺服器，子女拿票去下載；之後的進度由伺服器同步。
+
+/** 交棒票，欄位與 lib/service/ble_share_service.dart 的 validHandoverTicket 一致 */
+export interface HandoverTicket {
+  v: 1
+  caseId: string
+  token: string
+  key: string
+}
+
+export type BleHandoverReceiveResult =
+  | { state: 'found'; code: string; data: HandoverTicket }
+  | { state: 'notFound' }
+  | { state: 'unavailable'; reason: BleUnavailableReason }
+  | { state: 'error'; message?: string }
+
+// 一般瀏覽器沒有藍牙：把交棒票暫存在 localStorage，同一個瀏覽器的另一個分頁就能「接收」，方便用電腦測兩個角色
+const MOCK_TICKET_KEY = 'life-events.mock-handover-ticket'
+
+/** 開始用藍牙傳送交棒票，回覆方式同 startBleShare；離開頁面時一定要呼叫 stop */
+export function startBleHandoverShare(
+  ticket: HandoverTicket,
+  onEvent: (event: BleShareEvent) => void,
+): { stop: () => void; mocked: boolean } {
+  if (!isInApp()) {
+    writeJson(MOCK_TICKET_KEY, ticket)
+    const timers = [
+      window.setTimeout(() => onEvent({ state: 'advertising', code: '4821' }), 300),
+      window.setTimeout(() => onEvent({ state: 'sent' }), 6000),
+    ]
+    return { stop: () => timers.forEach((timer) => window.clearTimeout(timer)), mocked: true }
+  }
+  const unsubscribe = subscribe<BleShareEvent>('ble_handover_share_start', onEvent)
+  post('ble_handover_share_start', ticket)
+  return {
+    stop: () => {
+      unsubscribe()
+      post('ble_share_stop', null)
+    },
+    mocked: false,
+  }
+}
+
+/** 搜尋附近正在交棒的家人並讀取交棒票 */
+export async function receiveBleHandover(): Promise<{ result: BleHandoverReceiveResult; mocked: boolean }> {
+  if (!isInApp()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1500))
+    const ticket = readJson<HandoverTicket | null>(MOCK_TICKET_KEY, null)
+    return { result: ticket ? { state: 'found', code: '4821', data: ticket } : { state: 'notFound' }, mocked: true }
+  }
+  const result = await request<BleHandoverReceiveResult>('ble_receive', { kind: 'handover' }, 35000)
   return { result: result ?? { state: 'error', message: 'timeout' }, mocked: false }
 }
 

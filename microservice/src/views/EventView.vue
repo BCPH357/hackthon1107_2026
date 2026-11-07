@@ -1,13 +1,24 @@
 <script setup lang="ts">
-import { computed, watchEffect } from 'vue'
+import { computed, onMounted, watchEffect } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import HelpCard from '../components/HelpCard.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
 import { DATA_NOTICE } from '../config'
 import { categoryOf, findEvent } from '../data/lifeEvents'
+import {
+  elderCaseFor,
+  hasPendingHandover,
+  isHandedOver,
+  isMarked,
+  pushElderProgress,
+  refreshElderCase,
+  syncErrorMessage,
+  toggleMark,
+} from '../stores/cases'
 import { isEasyRead } from '../stores/display'
 import { doneCount, isStepDone, lastEventId, setStepDone } from '../stores/progress'
+import { showToast } from '../stores/toast'
 import { useDocumentTitle } from '../utils/documentTitle'
 
 const props = defineProps<{ eventId: string }>()
@@ -24,6 +35,44 @@ useDocumentTitle(() => event.value.title)
 // 記住有內容的事件，下次打開服務直接回到這裡
 watchEffect(() => {
   if (steps.value.length) lastEventId.value = event.value.id
+})
+
+// ---- 交棒給家人 ----
+const elderCase = computed(() => elderCaseFor(event.value.id))
+const handedCount = computed(() => steps.value.filter((step) => isHandedOver(event.value.id, step.id)).length)
+const markedCount = computed(() => steps.value.filter((step) => isMarked(event.value.id, step.id)).length)
+const pending = computed(() => hasPendingHandover(event.value.id, steps.value))
+
+/** 家人辦好、已同步的步驟 */
+function syncedDone(stepId: string): boolean {
+  return elderCase.value?.doc?.steps[stepId]?.done ?? false
+}
+
+/** 步驟旁的交棒狀態 */
+function handoverStatus(stepId: string): { text: string; tone: 'primary' | 'counter' | 'muted' } | null {
+  const marked = isMarked(event.value.id, stepId)
+  const handed = isHandedOver(event.value.id, stepId)
+  if (handed && marked) return syncedDone(stepId) ? { text: '家人已辦好', tone: 'primary' } : { text: '已交給家人', tone: 'primary' }
+  if (marked) return { text: '準備交給家人', tone: 'counter' }
+  if (handed) return { text: '將取消交給家人', tone: 'muted' }
+  return null
+}
+
+async function toggleDone(stepId: string) {
+  const done = isStepDone(event.value.id, stepId)
+  // 已完成的不會被退回：已同步給家人的完成狀態不能取消
+  if (done && syncedDone(stepId)) {
+    showToast('這一步已經同步給家人，不能取消打勾')
+    return
+  }
+  setStepDone(event.value.id, stepId, !done)
+  const error = await pushElderProgress(event.value.id, steps.value)
+  if (error) showToast(`進度沒有同步給家人：${syncErrorMessage(error)}`)
+}
+
+onMounted(async () => {
+  const error = await refreshElderCase(event.value.id)
+  if (error) showToast(`沒有取得家人的最新進度：${syncErrorMessage(error)}`)
 })
 </script>
 
@@ -42,7 +91,9 @@ watchEffect(() => {
           <span class="progress__fill" :style="{ width: `${(done / steps.length) * 100}%` }" />
         </div>
         <!-- CLAUDE_UI_GUIDE 2.4：打勾只是本機進度，不可當作政府已受理 -->
-        <p class="muted">打勾只記在這支手機上，幫你記得做到哪裡，不代表機關已經受理。</p>
+        <p class="muted">
+          {{ elderCase ? '這件事已經交棒，打勾會同步給家人。' : '打勾只記在這支手機上，幫你記得做到哪裡。' }}不代表機關已經受理。
+        </p>
       </div>
 
       <h2 class="section-title">一步一步來</h2>
@@ -66,6 +117,9 @@ watchEffect(() => {
               <span class="step__meta">
                 <StepModeBadge :mode="step.mode" />
                 <span v-if="isStepDone(event.id, step.id)" class="badge badge--primary">已辦好</span>
+                <span v-if="handoverStatus(step.id)" class="badge" :class="`badge--${handoverStatus(step.id)!.tone}`">
+                  {{ handoverStatus(step.id)!.text }}
+                </span>
               </span>
             </RouterLink>
             <button
@@ -73,10 +127,24 @@ watchEffect(() => {
               class="step__check"
               :aria-pressed="isStepDone(event.id, step.id)"
               :aria-label="`打勾：第 ${index + 1} 步「${step.title}」我已辦好`"
-              @click="setStepDone(event.id, step.id, !isStepDone(event.id, step.id))"
+              @click="toggleDone(step.id)"
             >
               <AppIcon :name="isStepDone(event.id, step.id) ? 'check-square' : 'square'" size="1.75rem" />
               <span class="step__check-label" aria-hidden="true">打勾</span>
+            </button>
+            <!-- 做不到的步驟（例如要臨櫃）交給家人；已辦好的步驟不用交 -->
+            <button
+              v-if="!isStepDone(event.id, step.id)"
+              type="button"
+              class="step__handover"
+              :class="{ 'step__handover--on': isMarked(event.id, step.id) }"
+              :aria-pressed="isMarked(event.id, step.id)"
+              :aria-label="`交給家人：第 ${index + 1} 步「${step.title}」`"
+              @click="toggleMark(event.id, step.id)"
+            >
+              <AppIcon name="users" size="1.5rem" />
+              <span aria-hidden="true">{{ isMarked(event.id, step.id) ? '交給家人辦' : '交給家人' }}</span>
+              <AppIcon v-if="isMarked(event.id, step.id)" name="check" size="1.5rem" />
             </button>
           </div>
         </li>
@@ -88,6 +156,20 @@ watchEffect(() => {
     <section v-else class="card stack" aria-labelledby="building-title">
       <h2 id="building-title" class="section-title">內容還在整理中</h2>
       <p>這件事的步驟我們還在整理，可以先撥打 1999，請專人告訴你要怎麼辦。</p>
+    </section>
+
+    <section v-if="steps.length && (markedCount || elderCase)" class="card handover" aria-labelledby="handover-title">
+      <h2 id="handover-title" class="section-title">交給家人</h2>
+      <p v-if="pending">已選 {{ markedCount }} 步要交給家人，按下面的按鈕交棒後才會生效。</p>
+      <p v-else>已經交給家人 {{ handedCount }} 步。家人辦好後，這裡會自動打勾。</p>
+      <RouterLink v-if="pending" :to="`/events/${event.id}/handover`" class="btn btn--primary btn--block">
+        <AppIcon name="users" />
+        交棒給家人（{{ markedCount }} 步）
+      </RouterLink>
+      <RouterLink v-else :to="`/events/${event.id}/handover`" class="btn btn--ghost btn--block">
+        <AppIcon name="bluetooth" />
+        家人換手機了？再傳一次交棒
+      </RouterLink>
     </section>
 
     <RouterLink to="/events" class="btn btn--secondary btn--block">看其他要辦的事</RouterLink>
@@ -250,6 +332,40 @@ watchEffect(() => {
 .step__check-label {
   font-size: var(--fs-caption);
   font-weight: 600;
+}
+
+/* 交給家人：整列大按鈕，字放大時照樣好按 */
+.step__handover {
+  flex: 1 0 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  padding: 0.5rem 1rem;
+  border: 0;
+  border-top: 1px solid var(--c-gray-100);
+  border-radius: 0 0 var(--radius) var(--radius);
+  background: transparent;
+  color: var(--c-primary-700);
+  font-size: var(--fs-title);
+  font-weight: 600;
+}
+
+.step__handover:active {
+  background: var(--c-primary-50);
+}
+
+/* 選取狀態不只靠顏色：文字改成「交給家人辦」並多一個勾 */
+.step__handover--on {
+  background: var(--c-secondary-50);
+  color: var(--c-secondary-800);
+}
+
+.handover {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
 .notice {

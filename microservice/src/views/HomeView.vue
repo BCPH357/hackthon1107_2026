@@ -6,6 +6,7 @@ import PageLayout from '../components/PageLayout.vue'
 import { APP_NAME } from '../config'
 import { findEvent } from '../data/lifeEvents'
 import { display } from '../stores/display'
+import { familyCases } from '../stores/cases'
 import { hasIdentity } from '../stores/identity'
 import { doneCount, lastEventId } from '../stores/progress'
 
@@ -66,6 +67,24 @@ const HOW_IT_WORKS = [
       <span class="continue__text">
         <span class="continue__title">家人要幫你辦事？</span>
         <span class="muted">用藍牙把你的年齡、戶籍傳給他</span>
+      </span>
+      <AppIcon name="chevron-right" size="1.5rem" />
+    </RouterLink>
+
+    <!-- 子女：接收長輩的交棒，之後在「家人交給我的事」看進度 -->
+    <RouterLink v-if="familyCases.length" to="/family" class="continue card">
+      <span class="share__icon"><AppIcon name="users" size="1.5rem" /></span>
+      <span class="continue__text">
+        <span class="continue__title">家人交給我的事</span>
+        <span class="muted">共 {{ familyCases.length }} 件，點進去打勾</span>
+      </span>
+      <AppIcon name="chevron-right" size="1.5rem" />
+    </RouterLink>
+    <RouterLink to="/handover/receive" class="continue card">
+      <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
+      <span class="continue__text">
+        <span class="continue__title">接收家人交棒</span>
+        <span class="muted">家人有做不到的步驟，可以用藍牙交給你辦</span>
       </span>
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
