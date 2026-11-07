@@ -53,13 +53,13 @@ function backToEvent() {
 
 function complete() {
   setStepDone(props.eventId, props.stepId, true)
-  showToast(`第 ${index.value + 1} 步「${step.value.title}」完成了`)
+  showToast(`第 ${index.value + 1} 步「${step.value.title}」已打勾`)
   backToEvent()
 }
 
 function undo() {
   setStepDone(props.eventId, props.stepId, false)
-  showToast('已取消完成')
+  showToast('已取消打勾')
 }
 </script>
 
@@ -70,17 +70,23 @@ function undo() {
       <h1 class="page-title">{{ step.title }}</h1>
       <p class="badges">
         <StepModeBadge :mode="step.mode" />
-        <span v-if="done" class="badge badge--primary">已完成</span>
+        <span v-if="done" class="badge badge--primary">已辦好</span>
+        <span class="badge badge--draft">示範資料</span>
       </p>
     </div>
 
+    <!-- CLAUDE_UI_GUIDE 2.5：固定依「要做什麼、要準備什麼、去哪裡辦、可以用的資源」的順序 -->
     <section class="card block" aria-labelledby="what-title">
       <h2 id="what-title" class="section-title">要做什麼</h2>
       <p>{{ step.what }}</p>
     </section>
 
     <section class="card block" aria-labelledby="prepare-title">
-      <h2 id="prepare-title" class="section-title">要準備什麼</h2>
+      <div class="block__head">
+        <h2 id="prepare-title" class="section-title">要準備什麼</h2>
+        <span class="badge badge--draft">待查證</span>
+      </div>
+      <p class="muted">清單是示範內容，出發前請先打電話確認要帶什麼。</p>
       <ul class="checklist">
         <li v-for="item in step.prepare" :key="item" class="checklist__item">
           <AppIcon name="check" class="checklist__icon" />
@@ -90,7 +96,10 @@ function undo() {
     </section>
 
     <section class="card block" aria-labelledby="where-title">
-      <h2 id="where-title" class="section-title">去哪裡辦</h2>
+      <div class="block__head">
+        <h2 id="where-title" class="section-title">去哪裡辦</h2>
+        <span class="badge badge--draft">待查證</span>
+      </div>
       <p class="where__name">{{ where.name }}</p>
       <p v-if="where.detail" class="muted">{{ where.detail }}</p>
       <div v-if="where.phone || where.mapQuery" class="actions">
@@ -100,7 +109,7 @@ function undo() {
         </button>
         <button v-if="where.mapQuery" type="button" class="btn btn--secondary" @click="openMapSearch(where.mapQuery)">
           <AppIcon name="map-pin" />
-          在地圖上找
+          在地圖上搜尋
         </button>
       </div>
     </section>
@@ -161,12 +170,13 @@ function undo() {
       <template v-if="!done">
         <button type="button" class="btn btn--primary btn--block" @click="complete">
           <AppIcon name="check" />
-          這一步完成了
+          我辦好這一步了
         </button>
+        <button type="button" class="btn btn--ghost btn--block btn--sm" @click="backToEvent">回到步驟清單</button>
       </template>
       <template v-else>
         <button type="button" class="btn btn--primary btn--block" @click="backToEvent">回到步驟清單</button>
-        <button type="button" class="btn btn--ghost btn--block btn--sm" @click="undo">取消完成</button>
+        <button type="button" class="btn btn--ghost btn--block btn--sm" @click="undo">取消打勾</button>
       </template>
     </template>
   </PageLayout>
@@ -183,6 +193,13 @@ function undo() {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
+}
+
+.block__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.5rem;
 }
 
 .sub-title {

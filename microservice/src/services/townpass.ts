@@ -109,5 +109,6 @@ export function openMapSearch(query: string): void {
 export function openTownPassService(service: TownPassService): void {
   if (service.phone) callPhone(service.phone)
   else if (service.url) openLink(service.url)
-  else showToast(`「${service.title}」還沒開放，可以撥打 1999 詢問`)
+  // CLAUDE_UI_GUIDE 7：沒有可用網址就明講尚未開放，不導向猜測的網址
+  else showToast(`「${service.title}」在台北通尚未開放，可以先撥打 1999 詢問`)
 }

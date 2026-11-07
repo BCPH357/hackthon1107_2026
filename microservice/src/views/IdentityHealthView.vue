@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
-import ChipGroup from '../components/ChipGroup.vue'
+import OptionGroup from '../components/OptionGroup.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
 import { DISABILITY_CARD_OPTIONS, DISABILITY_LEVEL_OPTIONS, FUNCTION_OPTIONS, HEALTH_OPTIONS } from '../data/identityOptions'
@@ -38,26 +38,34 @@ function next() {
     <StepIndicator :current="3" :total="5" />
     <div class="stack">
       <h1 class="page-title">{{ subject }}的身心與健康狀況</h1>
-      <p class="lead">可以複選，沒有的話直接按下一步。</p>
+      <p class="lead">可以複選，沒有的話直接按下一步。這些只用來推薦，不是資格審查。</p>
     </div>
 
-    <ChipGroup
+    <OptionGroup
       v-model="identity.functions"
       legend="生活上有沒有這些困難？"
-      hint="不需要有證明也可以選"
+      hint="不需要有證明也可以選，也不是醫療診斷"
       :options="FUNCTION_OPTIONS"
       multiple
     />
 
-    <ChipGroup v-model="disabilityCard" :legend="`${subject}有身心障礙證明嗎？`" :options="DISABILITY_CARD_OPTIONS" />
-    <ChipGroup
+    <OptionGroup
+      v-model="disabilityCard"
+      :legend="`${subject}有身心障礙證明嗎？`"
+      :options="DISABILITY_CARD_OPTIONS"
+      inline
+      clearable
+    />
+    <OptionGroup
       v-if="identity.disabilityCard === 'yes'"
       v-model="disabilityLevel"
       legend="證明上的障礙程度"
       :options="DISABILITY_LEVEL_OPTIONS"
+      inline
+      clearable
     />
 
-    <ChipGroup v-model="identity.health" legend="健康狀況" :options="HEALTH_OPTIONS" multiple />
+    <OptionGroup v-model="identity.health" legend="健康狀況" :options="HEALTH_OPTIONS" multiple />
 
     <p class="privacy muted">
       <AppIcon name="lock" />

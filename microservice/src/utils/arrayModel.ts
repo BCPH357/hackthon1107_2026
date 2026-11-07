@@ -1,6 +1,6 @@
 import { computed, type WritableComputedRef } from 'vue'
 
-/** 讓單選欄位（值或 null）也能接到以陣列為 v-model 的 ChipGroup */
+/** 讓單選欄位（值或 null）也能接到以陣列為 v-model 的 OptionGroup */
 export function arrayModel<T extends string>(get: () => T | null, set: (value: T | null) => void): WritableComputedRef<T[]> {
   return computed({
     get: () => {

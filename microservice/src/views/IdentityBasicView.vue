@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
-import ChipGroup from '../components/ChipGroup.vue'
+import OptionGroup from '../components/OptionGroup.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
 import { DISTRICTS, OUTSIDE_TAIPEI, OUTSIDE_TAIPEI_LABEL, YES_NO_OPTIONS } from '../data/identityOptions'
@@ -97,7 +97,7 @@ function next() {
     <section v-else-if="showAccountCard" class="card account" aria-labelledby="account-title">
       <div class="account__head">
         <h2 id="account-title" class="section-title">從台北通帳號帶入</h2>
-        <span v-if="mocked" class="badge badge--muted">瀏覽器模擬資料</span>
+        <span v-if="mocked" class="badge badge--draft">示範資料・未連接台北通</span>
       </div>
       <p v-if="identitySummary.basic.length" class="tag-list">
         <span v-for="item in identitySummary.basic" :key="item" class="tag">{{ item }}</span>
@@ -120,7 +120,7 @@ function next() {
         </div>
       </div>
 
-      <ChipGroup v-model="taipeiResident" :legend="`${subject}的戶籍在臺北市嗎？`" :options="YES_NO_OPTIONS" />
+      <OptionGroup v-model="taipeiResident" :legend="`${subject}的戶籍在臺北市嗎？`" :options="YES_NO_OPTIONS" inline clearable />
 
       <div class="field">
         <label for="district" class="field__label">{{ subject }}住在哪一區？</label>
@@ -131,7 +131,7 @@ function next() {
         </select>
       </div>
 
-      <ChipGroup v-model="indigenous" :legend="`${subject}是原住民嗎？`" :options="YES_NO_OPTIONS" />
+      <OptionGroup v-model="indigenous" :legend="`${subject}是原住民嗎？`" :options="YES_NO_OPTIONS" inline clearable />
     </form>
 
     <template #footer>

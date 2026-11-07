@@ -36,12 +36,15 @@ watchEffect(() => {
 
     <template v-if="steps.length">
       <div class="progress">
-        <p class="progress__text">已完成 {{ done }}/{{ steps.length }} 步</p>
+        <p class="progress__text">我的進度：已辦好 {{ done }}/{{ steps.length }} 步</p>
         <div class="progress__bar" aria-hidden="true">
           <span class="progress__fill" :style="{ width: `${(done / steps.length) * 100}%` }" />
         </div>
+        <!-- CLAUDE_UI_GUIDE 2.4：打勾只是本機進度，不可當作政府已受理 -->
+        <p class="muted">打勾只記在這支手機上，幫你記得做到哪裡，不代表機關已經受理。</p>
       </div>
 
+      <h2 class="section-title">一步一步來</h2>
       <ol class="steps" aria-label="步驟">
         <li
           v-for="(step, index) in steps"
@@ -60,24 +63,24 @@ watchEffect(() => {
               <span class="step__summary">{{ step.summary }}</span>
               <span class="step__meta">
                 <StepModeBadge :mode="step.mode" />
-                <span v-if="isStepDone(event.id, step.id)" class="badge badge--primary">已完成</span>
+                <span v-if="isStepDone(event.id, step.id)" class="badge badge--primary">已辦好</span>
               </span>
             </RouterLink>
             <button
               type="button"
               class="step__check"
               :aria-pressed="isStepDone(event.id, step.id)"
-              :aria-label="`第 ${index + 1} 步「${step.title}」完成了`"
+              :aria-label="`第 ${index + 1} 步「${step.title}」我已辦好`"
               @click="setStepDone(event.id, step.id, !isStepDone(event.id, step.id))"
             >
               <AppIcon :name="isStepDone(event.id, step.id) ? 'check-square' : 'square'" size="1.75rem" />
-              <span class="step__check-label" aria-hidden="true">完成</span>
+              <span class="step__check-label" aria-hidden="true">打勾</span>
             </button>
           </div>
         </li>
       </ol>
 
-      <p v-if="allDone" class="card card--tint" role="status">這件事的步驟都完成了，辛苦了！</p>
+      <p v-if="allDone" class="card card--tint" role="status">這件事的步驟你都勾完了，辛苦了！</p>
     </template>
 
     <section v-else class="card stack" aria-labelledby="building-title">

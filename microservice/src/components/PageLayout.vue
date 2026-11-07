@@ -57,21 +57,25 @@ function goBack() {
   flex-direction: column;
 }
 
-/* 模擬 TownPass 的 TPAppBar，只在瀏覽器預覽時出現 */
+/* 模擬 TownPass 的 TPWebView 標題列：primary500 底、白字、標題置中 h3 半粗體；只在瀏覽器預覽時出現 */
 .preview-bar {
   position: sticky;
   top: 0;
   z-index: 10;
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  justify-content: center;
   min-height: 3.5rem;
-  padding: 0 0.5rem;
+  padding: 0 3.5rem;
   background: var(--c-primary-500);
   color: var(--c-white);
 }
 
 .preview-bar__back {
+  position: absolute;
+  left: 0.25rem;
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -84,10 +88,9 @@ function goBack() {
 }
 
 .preview-bar__title {
-  flex: 1;
-  padding: 0 0.5rem;
-  font-size: var(--fs-title);
+  font-size: var(--fs-h3);
   font-weight: 600;
+  text-align: center;
 }
 
 .page__main {

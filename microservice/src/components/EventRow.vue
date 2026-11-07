@@ -20,7 +20,7 @@ const done = computed(() => doneCount(props.event.id, props.event.steps))
       <span v-if="sub" class="event-row__sub">{{ sub }}</span>
     </span>
     <span v-if="!total" class="badge badge--muted">建置中</span>
-    <span v-else-if="done" class="badge badge--primary">已完成 {{ done }}/{{ total }}</span>
+    <span v-else-if="done" class="badge badge--primary">進度 {{ done }}/{{ total }}</span>
     <AppIcon name="chevron-right" class="event-row__chevron" />
   </RouterLink>
 </template>

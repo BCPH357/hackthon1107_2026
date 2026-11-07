@@ -29,7 +29,7 @@ const HOW_IT_WORKS = [
       <span class="continue__text">
         <span class="muted">繼續上次的事</span>
         <span class="continue__title">{{ lastEvent.title }}</span>
-        <span v-if="lastEvent.steps" class="muted">已完成 {{ lastDone }}/{{ lastEvent.steps.length }} 步</span>
+        <span v-if="lastEvent.steps" class="muted">已辦好 {{ lastDone }}/{{ lastEvent.steps.length }} 步</span>
       </span>
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>

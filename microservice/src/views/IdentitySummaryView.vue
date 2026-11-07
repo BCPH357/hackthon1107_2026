@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
-import { identity, identitySummary, resetIdentity } from '../stores/identity'
+import { identity, identitySummary, identityTags, resetIdentity } from '../stores/identity'
 import { clearProgress } from '../stores/progress'
 import { showToast } from '../stores/toast'
 
@@ -39,6 +39,11 @@ function clearAll() {
       <h1 class="page-title">確認一下</h1>
       <p class="lead">我們會依照下面的情況推薦要辦的事，之後隨時可以回來修改。</p>
     </div>
+
+    <section class="overview card card--tint" aria-labelledby="overview-title">
+      <h2 id="overview-title" class="overview__label">{{ identity.forWhom === 'family' ? '家人的情況' : '你的情況' }}</h2>
+      <p class="overview__line">{{ identityTags.join('・') || '還沒有填寫任何條件' }}</p>
+    </section>
 
     <ul class="summary">
       <li v-for="section in sections" :key="section.title" class="summary__item card">
@@ -76,6 +81,24 @@ function clearAll() {
 </template>
 
 <style scoped>
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.overview__label {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--c-primary-700);
+}
+
+.overview__line {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  color: var(--c-gray-900);
+}
+
 .summary {
   display: flex;
   flex-direction: column;
