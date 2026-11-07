@@ -116,7 +116,11 @@ class TPWebView extends StatelessWidget {
   }
 }
 
-const bool _useBundledLifeEvents = !bool.hasEnvironment('LIFE_EVENTS_URL');
+/// 「一步一步來」預設開 Cloudflare Pages 的正式網址（lifeEventsServiceUrl），改版部署後 App 不用重新建置。
+/// 要 demo 離線版（microservice/ 先執行 npm run build:app，把網頁打包進 App）時，建置時加上
+///   --dart-define=LIFE_EVENTS_BUNDLED=true
+/// 才會改開手機本機的 http://127.0.0.1:43862。
+const bool _useBundledLifeEvents = bool.fromEnvironment('LIFE_EVENTS_BUNDLED');
 
 /// 可以使用相機與方向感測器（AR 方向指引）的網站：「一步一步來」正式網址、Cloudflare Pages 每次部署的預覽網址，
 /// 以及開發用的快速通道。相機畫面只在手機上顯示、不會上傳；系統層的相機權限仍由 iOS / Android 另外詢問使用者。

@@ -38,15 +38,21 @@ Here are some quick setup guide.
    flutter run
    ```
 
-## 城市嚮導離線版
+## 城市嚮導離線版（選用）
 
-在 Flutter build 前，先將「一步一步來」網頁與 3D 素材打包進 App。修改網頁後也要重跑這個步驟。
+台北通 App 的「一步一步來」預設開 Cloudflare Pages 的正式網址 https://townpass-life-events.pages.dev/ ，網頁改版只要部署，App 不用重新建置；城市嚮導的裝置端 AI 問答在正式網址也能用。
+
+要在沒有網路的場合 demo 時，才把網頁與 3D 素材打包進 App，並在 Flutter build 時明確指定使用離線版。修改網頁後要重跑打包與建置：
 
 ```bash
 cd microservice
 npm ci
-npm run build:app
+VITE_API_BASE=https://xxxx.trycloudflare.com npm run build:app   # 交棒同步的後端網址，見 microservice/README.md
+cd ..
+fvm flutter run --dart-define=LIFE_EVENTS_BUNDLED=true
 ```
+
+沒有加 `LIFE_EVENTS_BUNDLED=true` 時，就算 App 裡有打包好的 `site.zip` 也不會使用。
 
 城市嚮導使用 `flutter_edge_ai` 2.5.6 與 `flutter_edge_ai_litertlm` 1.19.2 在裝置端從本機資料選擇服務。可用模型是 LiteRT Community 發布的 Google Gemma 4 IT，兩個版本均為 Apache-2.0 授權。
 

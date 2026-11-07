@@ -1,3 +1,9 @@
+// 城市嚮導只在 App 信任的網頁裡呼叫：Cloudflare Pages 正式網址，或隨 App 打包的離線版（127.0.0.1:43862）。
+// App 端也會再檢查一次來源（lib/service/city_guide_site.dart 的 trustsOrigin）。
+const TRUSTED_PAGE =
+  typeof location !== 'undefined' &&
+  (location.hostname === 'townpass-life-events.pages.dev' || (location.hostname === '127.0.0.1' && location.port === '43862'))
+
 type BridgeReply = { id: string; type?: string; choice?: number | null; model?: string | null; voice?: boolean; text?: string | null; error?: string }
 
 function request(
@@ -7,7 +13,7 @@ function request(
   signal?: AbortSignal,
 ): Promise<BridgeReply | null> {
   const bridge = window.flutterObject
-  if (!bridge || location.hostname !== '127.0.0.1' || location.port !== '43862' || signal?.aborted) {
+  if (!bridge || !TRUSTED_PAGE || signal?.aborted) {
     return Promise.resolve(null)
   }
   const id = crypto.randomUUID()

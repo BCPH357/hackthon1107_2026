@@ -22,7 +22,7 @@ class CityGuideMessageHandler extends TPWebMessageHandler {
     required bool isMainFrame,
     required Function(WebMessage replyWebMessage)? onReply,
   }) async {
-    if (!isMainFrame || !CityGuideSite.instance.ownsOrigin(sourceOrigin)) {
+    if (!isMainFrame || !CityGuideSite.instance.trustsOrigin(sourceOrigin)) {
       return;
     }
     final request = message is Map ? message : const {};

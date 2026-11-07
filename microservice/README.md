@@ -50,7 +50,7 @@ npm run deploy         # 型別檢查、打包，再上傳到 Cloudflare Pages
   ```
 
   通道網址每次重開都會變，變了就重跑第 3 步；App 不用重新建置（離線版例外，要重跑 `build:app` 再建置 App）。案件只存在 Flask 的記憶體，Flask 重開後要請長輩再交棒一次。
-- 城市嚮導的裝置端 AI 問答只在 App 內打包的離線版啟用（根目錄 README 的「城市嚮導離線版」）；建置 App 前沒跑 `npm run build:app` 的話，App 會開正式網址，嚮導的 AI 問答不會出現。
+- 台北通 App 預設開這個正式網址；城市嚮導的裝置端 AI 問答在正式網址與 App 內的離線版都能用，App 只回應這兩個來源（`lib/service/city_guide_site.dart` 的 `trustsOrigin`）。要改開離線版，見根目錄 README 的「城市嚮導離線版（選用）」。
 
 ## 用自己的電腦對外（開發測試用）
 
