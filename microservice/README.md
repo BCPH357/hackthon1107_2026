@@ -18,16 +18,42 @@ npm run preview    # 預覽打包結果，http://localhost:4173
 
 在一般瀏覽器開啟時沒有城市通 App，會用模擬資料，並在畫面上方顯示模擬的標題列。用 Chrome DevTools 的裝置模擬（例如寬 402px）就能檢查手機版面。
 
-## 在城市通 App 裡測試
+## 部署（Cloudflare Pages）
 
-Android 版 App 不允許 http，一律用 ngrok 的 https 網址。
+正式網址：**https://townpass-life-events.pages.dev/**
+
+微服務目前全是靜態網頁，放在 Cloudflare Pages：網址固定、自動 HTTPS、免費方案就夠用，不需要自己的電腦一直開著。台北通 App 的「一步一步來」預設就開這個網址。
+
+更新上線：
 
 ```bash
-npm run dev
-ngrok http 5173
+cd microservice
+npm run deploy:login   # 第一次需要：瀏覽器登入 Cloudflare 並按 Allow
+npm run deploy         # 型別檢查、打包，再上傳到 Cloudflare Pages
 ```
 
-`vite.config.ts` 已允許所有 ngrok 子網域，不必每次修改。把 ngrok 給的網址填進 TownPass 的 `lib/page/city_service/model/my_service_model.dart` 對應服務的 `destinationUrl`。
+- 專案名稱是 `townpass-life-events`，寫在 `scripts/deploy.mjs`。這個網址屬於建立它的 Cloudflare 帳號；隊友要更新同一個網址，請帳號擁有者在 Cloudflare 後台把隊友加為帳號成員。
+- 換到新帳號重建專案時，wrangler 4.158 需要加 `--force` 才會建立原本的 Pages 專案（不加會轉成 Workers 而失敗）：`npx wrangler pages project create 專案名稱 --production-branch main --force`，只有建立時需要。
+- 使用者填的身分只存在手機的 localStorage，Pages 只放靜態檔，不會收到任何個人資料。
+- 路由用 hash（`#/events`），所以不需要設定單頁應用的轉址規則。
+
+## 用自己的電腦對外（開發測試用）
+
+iPhone 與 Android 都不允許 http，要用 https 網址。想在手機上看還沒部署的修改，或之後有 Flask 後端要從自己電腦對外時，用 Cloudflare 通道：
+
+```bash
+npm run build
+npm run preview                                          # http://localhost:4173
+cloudflared tunnel --no-autoupdate --url http://localhost:4173
+```
+
+終端機會印出一個 `https://xxxx.trycloudflare.com` 網址，沒有 ngrok 免費版的警告頁。快速通道**每次重開網址都會變**，Cloudflare 也標明只供測試。建置台北通 App 時帶入這個網址，會蓋過預設的 Pages 網址：
+
+```bash
+fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
+```
+
+`vite.config.ts` 已允許 `trycloudflare.com` 與 ngrok 的所有子網域；ngrok 仍可當備案。要固定網址的通道，需要一個掛在 Cloudflare 的網域，用 `cloudflared tunnel login`、`create`、`route dns`、`run --url` 建立命名通道。
 
 ## 與 App 的溝通
 
@@ -93,6 +119,7 @@ Three.js 打包成獨立的檔案（壓縮後約 170 KB），只有打開城市�
 | vue-tsc | 3.3 | MIT |
 | three | 0.187 | MIT |
 | @types/three | 0.187 | MIT |
+| wrangler（只用來部署，不會打包進網頁） | 4.158 | MIT 或 Apache-2.0 |
 
 城市地圖的 3D 模型取自 [Kenney City Kit Commercial 2.1](https://kenney.nl/assets/city-kit-commercial)，授權為 CC0（公眾領域），授權檔在 `public/city/KENNEY-LICENSE.txt`。
 
@@ -104,4 +131,4 @@ Three.js 打包成獨立的檔案（壓縮後約 170 KB），只有打開城市�
 
 ## 已知問題
 
-Node.js 24.11 在 Windows 上，路徑含中文時用 `fs.rmSync` 遞迴刪除資料夾會讓程序直接結束，沒有任何錯誤訊息。Vite 打包前清空 `dist/` 用的就是它，所以 `vite.config.ts` 關閉了 `emptyOutDir`，改由 `scripts/clean-dist.mjs` 逐檔刪除。
+Node.js 24.11 在 Windows 上，路徑含中文時用 `fs.rmSync` 遞迴刪除資料夾會讓程序直接結束，沒有任何錯誤訊息。Vite 打包前清空 `dist/` 用的就是它，所以 `vite.config.ts` 關閉了 `emptyOutDir`，改由 `scripts/clean-dist.mjs` 逐檔刪除。同樣的原因，`scripts/deploy.mjs` 從系統暫存資料夾執行 wrangler，否則部署或登入完成後會以 127 結束。

@@ -1,8 +1,18 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
-// 透過 ngrok 對外時，Vite 會擋下不認得的網域；前面加點代表允許所有子網域
-const ngrokHosts = ['.ngrok-free.app', '.ngrok-free.dev', '.ngrok.app', '.ngrok.dev', '.ngrok.io']
+// 從自己電腦對外（Cloudflare Tunnel 或 ngrok）時，Vite 會擋下不認得的網域；前面加點代表允許所有子網域。
+// 改用 Cloudflare 命名通道接自己的網域時，把網域加在這裡，例如 '.example.com'。
+const tunnelHosts = [
+  // Cloudflare 快速通道：cloudflared tunnel --url http://localhost:4173
+  '.trycloudflare.com',
+  // ngrok
+  '.ngrok-free.app',
+  '.ngrok-free.dev',
+  '.ngrok.app',
+  '.ngrok.dev',
+  '.ngrok.io',
+]
 
 export default defineConfig({
   // 用相對路徑，打包後放在任何子路徑（Flask static、Firebase Hosting）都能開
@@ -17,11 +27,11 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
-    allowedHosts: ngrokHosts,
+    allowedHosts: tunnelHosts,
   },
   preview: {
     host: true,
     port: 4173,
-    allowedHosts: ngrokHosts,
+    allowedHosts: tunnelHosts,
   },
 })
