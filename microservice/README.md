@@ -49,6 +49,8 @@ npm run deploy         # 型別檢查、打包，再上傳到 Cloudflare Pages
   VITE_API_BASE=https://xxxx.trycloudflare.com npm run deploy
   ```
 
+  不想每次打網址：在 `microservice/` 建 `.env.production.local`，寫一行 `VITE_API_BASE=https://xxxx.trycloudflare.com`，之後 `npm run deploy`、`npm run build:app` 會自動帶入。這個檔被 `.gitignore` 的 `*.local` 排除，每個人填自己的後端網址。Windows 上 5000 沒被占用，可以直接用 5000，並建議用 `flask --app app run --host 127.0.0.1` 只在本機監聽、交給通道對外。
+
   通道網址每次重開都會變，變了就重跑第 3 步；App 不用重新建置（離線版例外，要重跑 `build:app` 再建置 App）。案件只存在 Flask 的記憶體，Flask 重開後要請長輩再交棒一次。
 - 台北通 App 預設開這個正式網址；城市嚮導的裝置端 AI 問答在正式網址與 App 內的離線版都能用，App 只回應這兩個來源（`lib/service/city_guide_site.dart` 的 `trustsOrigin`）。要改開離線版，見根目錄 README 的「城市嚮導離線版（選用）」。
 
