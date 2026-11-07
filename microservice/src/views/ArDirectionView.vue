@@ -20,7 +20,7 @@ import {
   placesOf,
   type Place,
 } from '../data/places'
-import { CAMERA_ERROR_TEXT, closeCamera, openRearCamera, type CameraError } from '../services/camera'
+import { CAMERA_ERROR_TEXT, closeCamera, openRearCamera, type CameraError, type CameraResult } from '../services/camera'
 import { requestOrientationPermission, watchHeading, type HeadingReading } from '../services/compass'
 import { speakChunks, speaking, stopSpeaking, ttsSupported } from '../services/speech'
 import {
@@ -212,7 +212,7 @@ function speakDirection() {
 function start(withCamera: boolean) {
   // iPhone 的方向感測器權限必須在點擊的當下要求，所以先送出，再做其他事
   const orientation = requestOrientationPermission()
-  const camera = withCamera ? openRearCamera() : null
+  const camera = withCamera ? openRearCamera(1) : null
   wantCamera.value = withCamera
   phase.value = 'running'
   if (locationStatus.value === 'off') void locate(true)
@@ -222,7 +222,12 @@ function start(withCamera: boolean) {
   void nextTick(() => directionEl.value?.focus())
 }
 
-function attachCamera(result: Awaited<ReturnType<typeof openRearCamera>>) {
+/** 相機剛關掉又打開、或被其他 App 占用時會暫時失敗，重開時多試兩次 */
+function reopenCamera() {
+  void openRearCamera(2).then(attachCamera)
+}
+
+function attachCamera(result: CameraResult) {
   if ('error' in result) {
     cameraError.value = result.error
     wantCamera.value = false
@@ -234,14 +239,35 @@ function attachCamera(result: Awaited<ReturnType<typeof openRearCamera>>) {
     return
   }
   cameraError.value = null
-  // 連按兩次開啟時會拿到兩條串流，先關掉舊的
-  closeCamera(stream.value)
+  // 連按兩次開啟時會拿到兩條串流，先換上新的再關掉舊的
+  const previous = stream.value
   stream.value = result.stream
+  closeCamera(previous)
+  const opened = result.stream
+  opened.getVideoTracks().forEach((track) => track.addEventListener('ended', () => onCameraEnded(opened)))
+}
+
+// 自己呼叫 stop() 不會觸發 ended；會觸發的是來電、其他 App 搶走相機或系統中斷。
+// 這時畫面會停在最後一格，所以自動重開一次；10 秒內再斷就不重試，改用錶盤並說明
+let lastAutoReopen = 0
+function onCameraEnded(ended: MediaStream) {
+  if (stream.value !== ended) return
+  stream.value = null
+  closeCamera(ended)
+  if (!alive || !wantCamera.value || document.hidden) return
+  if (Date.now() - lastAutoReopen < 10000) {
+    wantCamera.value = false
+    cameraError.value = 'failed'
+    return
+  }
+  lastAutoReopen = Date.now()
+  reopenCamera()
 }
 
 function stopCamera() {
-  closeCamera(stream.value)
+  const current = stream.value
   stream.value = null
+  closeCamera(current)
 }
 
 function toggleCamera() {
@@ -250,7 +276,7 @@ function toggleCamera() {
     stopCamera()
   } else {
     wantCamera.value = true
-    void openRearCamera().then(attachCamera)
+    reopenCamera()
   }
 }
 
@@ -309,7 +335,7 @@ function finish() {
 function onVisibility() {
   if (phase.value !== 'running') return
   if (document.hidden) stopCamera()
-  else if (wantCamera.value && !stream.value) void openRearCamera().then(attachCamera)
+  else if (wantCamera.value && !stream.value) reopenCamera()
 }
 
 const landscapeQuery = typeof window !== 'undefined' ? window.matchMedia('(orientation: landscape) and (pointer: coarse)') : null
