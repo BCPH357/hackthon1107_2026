@@ -26,7 +26,29 @@ const sheet = ref<InstanceType<typeof BottomSheet> | null>(null)
 const guidePin = ref<HTMLButtonElement | null>(null)
 const guideOpen = ref(false)
 const guideWalking = ref(false)
-const guideStation = ref<{ index: number; fullRoute: boolean; stepId?: string } | null>(null)
+type GuideStationState = { index: number; fullRoute: boolean; stepId?: string }
+
+// 嚮導目前在哪一站記在網址（?station=站序&route=1&step=步驟），點進步驟再返回時才接得回同一站
+const GUIDE_QUERY_KEYS = ['station', 'route', 'step'] as const
+
+function guideStationFromQuery(): GuideStationState | null {
+  const index = Number(route.query.station)
+  const stop = Number.isInteger(index) ? GUIDE_STATIONS[index] : undefined
+  if (!stop || route.query.cat !== stop.categoryId) return null
+  const step = route.query.step
+  return { index, fullRoute: route.query.route === '1', stepId: typeof step === 'string' ? step : undefined }
+}
+
+function guideQuery(state: GuideStationState) {
+  return { station: String(state.index), ...(state.fullRoute ? { route: '1' } : {}), ...(state.stepId ? { step: state.stepId } : {}) }
+}
+
+/** 網址的 query 拿掉嚮導站點的部分 */
+function withoutGuideQuery(query: typeof route.query) {
+  return Object.fromEntries(Object.entries(query).filter(([key]) => !(GUIDE_QUERY_KEYS as readonly string[]).includes(key)))
+}
+
+const guideStation = ref<GuideStationState | null>(guideStationFromQuery())
 const status = ref<'loading' | 'ready' | 'unsupported' | 'error'>('loading')
 const loadPercent = ref(0)
 /** 字放大到 125% 以上，或螢幕太窄讓標籤排不開時，標籤改排在地圖下方 */
@@ -81,7 +103,7 @@ function select(categoryId: string | null): void {
 
 function showCategory(categoryId: string) {
   // 抽屜已開時換類別用 replace，返回鍵不必一棟一棟退
-  const location = { query: { ...route.query, cat: categoryId } }
+  const location = { query: { ...withoutGuideQuery(route.query), cat: categoryId } }
   return selectedId.value ? router.replace(location) : router.push(location)
 }
 
@@ -116,6 +138,8 @@ async function goToGuideStation(index: number, fullRoute: boolean, stepId?: stri
   if (selectedId.value !== stop.categoryId) await showCategory(stop.categoryId)
   if (unmounted) return
   guideStation.value = { index, fullRoute, stepId }
+  await router.replace({ query: { ...withoutGuideQuery(route.query), cat: stop.categoryId, ...guideQuery(guideStation.value) } })
+  if (unmounted) return
   guideWalking.value = false
   await nextTick()
   layoutPins()
@@ -124,6 +148,16 @@ async function goToGuideStation(index: number, fullRoute: boolean, stepId?: stri
 
 function startGuide(choice: GuideChoice): void {
   void goToGuideStation(choice.station ?? 0, choice.station === null, choice.stepId)
+}
+
+/** 從站點點進某一步：先把這一步記在網址（返回時標示剛才看的那一步），再進步驟頁 */
+async function openGuideStep(stepId: string): Promise<void> {
+  const current = guideStation.value
+  if (!current) return
+  const stop = GUIDE_STATIONS[current.index]
+  guideStation.value = { ...current, stepId }
+  await router.replace({ query: { ...withoutGuideQuery(route.query), cat: stop.categoryId, ...guideQuery(guideStation.value) } })
+  await router.push(`/events/${stop.eventId}/steps/${stepId}`)
 }
 
 function nextGuideStation(): void {
@@ -167,7 +201,13 @@ onMounted(async () => {
     })
     if (unmounted) return
     status.value = 'ready'
-    void scene.addGuide().catch(() => undefined)
+    void scene
+      .addGuide()
+      .then(() => {
+        const restored = guideStation.value
+        if (restored && !unmounted) scene?.placeGuideAt(GUIDE_STATIONS[restored.index].categoryId)
+      })
+      .catch(() => undefined)
     await nextTick()
     measurePins()
     layoutPins()
@@ -466,6 +506,7 @@ watch(gridLabels, async (grid) => {
         :title-id="SHEET_TITLE_ID"
         @close="closeSheet"
         @next="nextGuideStation"
+        @open-step="openGuideStep"
       />
       <CategorySheet
         v-else-if="selectedCategory"

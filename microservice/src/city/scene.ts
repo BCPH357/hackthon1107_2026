@@ -208,6 +208,9 @@ function findTexture(gltf: GLTF): Texture | null {
   return texture
 }
 
+/** 嚮導走的四條街（z 座標） */
+const GUIDE_STREETS = [-(ROAD_HALF - 0.32), -PLOT_PITCH / 2, PLOT_PITCH / 2, ROAD_HALF - 0.32]
+
 export class CityScene {
   /** 新版 Three.js 需要 WebGL 2（iOS 15 起、現代 Android WebView 都支援） */
   static isSupported(): boolean {
@@ -458,14 +461,33 @@ export class CityScene {
     this.guideMixer?.update(0)
   }
 
+  /** 嚮導站在這個類別大樓前的位置 */
+  private guideSpotFor(categoryId: string): Vector3 | null {
+    const guide = this.guide
+    const plot = CITY_PLOTS.find((item) => item.categoryId === categoryId)
+    if (!guide || !plot) return null
+    const { x } = plotCenter(plot)
+    return new Vector3(x, guide.position.y, GUIDE_STREETS[plot.row + 1])
+  }
+
+  /** 不走路、直接把嚮導放到大樓前：從步驟頁回到地圖時，接回剛才那一站 */
+  placeGuideAt(categoryId: string): void {
+    const target = this.guideSpotFor(categoryId)
+    if (!this.guide || !target || this.disposed) return
+    this.finishWalk?.()
+    this.guide.position.copy(target)
+    this.view = { ...this.view, tx: target.x, tz: target.z }
+    this.applyCamera()
+    this.requestRender()
+  }
+
   walkGuideTo(categoryId: string): Promise<void> {
     const guide = this.guide
     const plot = CITY_PLOTS.find((item) => item.categoryId === categoryId)
-    if (!guide || !plot || this.disposed) return Promise.resolve()
+    const target = this.guideSpotFor(categoryId)
+    if (!guide || !plot || !target || this.disposed) return Promise.resolve()
     this.finishWalk?.()
-    const streets = [-(ROAD_HALF - 0.32), -PLOT_PITCH / 2, PLOT_PITCH / 2, ROAD_HALF - 0.32]
-    const { x } = plotCenter(plot)
-    const target = new Vector3(x, guide.position.y, streets[plot.row + 1])
+    const streets = GUIDE_STREETS
     if (this.options.reducedMotion || guide.position.distanceTo(target) < 0.01) {
       guide.position.copy(target)
       this.requestRender()

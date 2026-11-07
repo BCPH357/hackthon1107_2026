@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { GUIDE_STATIONS } from '../city/guide'
 import { findEvent } from '../data/lifeEvents'
 import { doneCount, isStepDone } from '../stores/progress'
@@ -7,7 +8,8 @@ import { callPhone } from '../services/townpass'
 import AppIcon from './AppIcon.vue'
 
 const props = defineProps<{ index: number; fullRoute: boolean; stepId?: string; titleId: string }>()
-const emit = defineEmits<{ close: []; next: [] }>()
+const emit = defineEmits<{ close: []; next: []; 'open-step': [stepId: string] }>()
+const router = useRouter()
 const station = computed(() => GUIDE_STATIONS[props.index])
 const event = computed(() => findEvent(station.value.eventId))
 const next = computed(() => props.fullRoute ? GUIDE_STATIONS[props.index + 1] : undefined)
@@ -34,15 +36,17 @@ const next = computed(() => props.fullRoute ? GUIDE_STATIONS[props.index + 1] : 
     <p class="muted">已辦好 {{ doneCount(event.id, event.steps) }}/{{ event.steps?.length ?? 0 }} 步</p>
     <ul class="guide-station__steps">
       <li v-for="step in event.steps" :key="step.id">
-        <RouterLink
-          :to="`/events/${event.id}/steps/${step.id}`"
+        <!-- 交給地圖頁開步驟：先把站點與這一步記在網址，返回時才回得到這一站 -->
+        <a
+          :href="router.resolve(`/events/${event.id}/steps/${step.id}`).href"
           class="guide-station__step card"
           :class="{ 'guide-station__step--selected': step.id === stepId }"
+          @click.prevent="emit('open-step', step.id)"
         >
           <AppIcon v-if="isStepDone(event.id, step.id)" name="check" />
           <span>{{ step.title }}</span>
           <AppIcon name="chevron-right" />
-        </RouterLink>
+        </a>
       </li>
     </ul>
     <div v-if="fullRoute && !next" class="guide-station__phones">

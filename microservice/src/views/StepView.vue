@@ -74,8 +74,10 @@ const eventPath = computed(() => `/events/${props.eventId}`)
 const stepPath = computed(() => `${eventPath.value}/steps/${props.stepId}`)
 
 function backToEvent() {
-  // 從清單點進來就退回去，避免標題列的返回鍵又回到這一步
-  if (window.history.state?.back === eventPath.value) router.back()
+  // 從清單或城市地圖（嚮導的站點、類別抽屜）點進來就退回去，回到原本選步驟的地方；
+  // 退回也避免標題列的返回鍵又回到這一步
+  const back = window.history.state?.back
+  if (back === eventPath.value || (typeof back === 'string' && back.startsWith('/city'))) router.back()
   else router.replace(eventPath.value)
 }
 
