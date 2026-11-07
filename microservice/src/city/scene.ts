@@ -14,6 +14,7 @@ import {
   Object3D,
   OrthographicCamera,
   PCFShadowMap,
+  Plane,
   Raycaster,
   Scene,
   Vector2,
@@ -23,34 +24,55 @@ import {
   type Material,
   type Texture,
 } from 'three'
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js'
 import { GLTFLoader, type GLTF } from 'three/addons/loaders/GLTFLoader.js'
+import { ICONS } from '../data/icons'
+import { CATEGORIES } from '../data/lifeEvents'
 import {
   CITY_PLOTS,
   CITY_THEMES,
+  MEDICAL_RED,
   NEUTRAL_ACCENT,
   NEUTRAL_WALL,
   PARASOLS,
   PLOT_PITCH,
   PLOT_SIZE,
+  PROPS,
   SKYLINE,
   TREES,
+  kitOf,
   modelUrl,
   plotCenter,
+  type CityPlot,
   type CityThemeKey,
+  type ModelKit,
 } from './config'
-import { recolorPalette } from './textures'
+import { PALETTE, createCrossSign, createHelipad, createIconSign, recolorPalette } from './textures'
 
 /*
  * 城市地圖的 3D 場景（Three.js，MIT 授權）。
- * - 固定的正交視角，不讓使用者旋轉縮放：長者不會轉到迷路，也不會和 WebView 的捲動手勢打架
- * - 只在畫面需要變化時才重畫（載入、動畫、尺寸改變），平常不耗電
+ * - 正交鏡頭，俯角固定；單指拖曳平移、兩指捏合縮放與轉動旋轉、滑鼠滾輪縮放、右鍵拖曳旋轉。
+ *   縮放與旋轉都以手指底下的位置為中心。外層另有按鈕可縮放、旋轉、回到原本視角，不會雙指操作的人也能用
+ * - 只在畫面需要變化時才重畫（載入、動畫、手勢、尺寸改變），平常不耗電
  * - 文字標籤由外層 Vue 元件用真正的按鈕疊在畫面上，讀屏與鍵盤都能操作；這裡只提供螢幕座標
  */
 
-const YAW = (14 * Math.PI) / 180
+/** 預設方位角：略偏右前方，看得到大樓正面與右側 */
+const DEFAULT_YAW = (14 * Math.PI) / 180
 /** 俯角低一點，多看到外牆的顏色、少看到深灰的屋頂 */
 const ELEVATION = (34 * Math.PI) / 180
+const SIN_E = Math.sin(ELEVATION)
+const COS_E = Math.cos(ELEVATION)
 const CAMERA_DISTANCE = 40
+/** 縮放範圍：相對於剛好放進整座城市的倍率 */
+const MIN_ZOOM = 0.55
+const MAX_ZOOM = 4
+/** 鏡頭中心能移動的範圍，城市不會被拖到畫面外找不回來 */
+const PAN_LIMIT = 5
+/** 單指移動超過這個距離才算拖曳，否則當作點選 */
+const DRAG_THRESHOLD = 8
+/** 城市底座的邊長：旋轉到任何角度都看得到完整的城市 */
+const BASE_SIZE = 11
 /** 主角大樓的縮放：讓大樓佔滿地塊 */
 const LANDMARK_SCALE = 1.15
 /** 選取時拉近的倍率 */
@@ -61,6 +83,13 @@ const LIFT = 0.14
 const DIM = 0.24
 /** 標籤錨點在屋頂上方的距離 */
 const LABEL_GAP = 0.12
+/** 外牆招牌的邊長（世界座標） */
+const SIGN_SIZE = 0.48
+/** 前院招牌的邊長與高度 */
+const YARD_SIGN_SIZE = 0.34
+const YARD_SIGN_HEIGHT = 0.5
+const SIGN_EDGE_COLOR = '#ffffff'
+const POST_COLOR = '#738995' // grayscale500
 
 const GROUND_COLOR = '#e3e7e9' // grayscale100：人行道
 const ROAD_COLOR = '#5e6d76' // grayscale600：柏油路
@@ -106,11 +135,40 @@ interface Landmark {
   highlight: number
 }
 
-interface Frustum {
-  left: number
-  right: number
-  top: number
-  bottom: number
+/** 鏡頭狀態：看向地面上的 (tx, tz)，這一點出現在畫面水平中央、離上緣 sy 的位置 */
+interface ViewState {
+  tx: number
+  tz: number
+  yaw: number
+  /** 每個世界單位幾個 px */
+  scale: number
+  sy: number
+}
+
+/** 某個方位角下，相機平面的右方與上方 */
+function axesAt(yaw: number): { right: Vector3; up: Vector3 } {
+  return {
+    right: new Vector3(Math.cos(yaw), 0, -Math.sin(yaw)),
+    up: new Vector3(-SIN_E * Math.sin(yaw), COS_E, -SIN_E * Math.cos(yaw)),
+  }
+}
+
+/** 相機平面座標 (px, py) 在地面上對應的點：鏡頭看向這一點時，(px, py) 就在畫面中心 */
+function groundFromPlane(px: number, py: number, yaw: number): { tx: number; tz: number } {
+  const toward = -py / SIN_E
+  return {
+    tx: px * Math.cos(yaw) + toward * Math.sin(yaw),
+    tz: -px * Math.sin(yaw) + toward * Math.cos(yaw),
+  }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value))
+}
+
+/** 角度差轉成 -π 到 π，旋轉時走最短的方向 */
+function wrapAngle(angle: number): number {
+  return Math.atan2(Math.sin(angle), Math.cos(angle))
 }
 
 export interface CitySceneOptions {
@@ -164,22 +222,31 @@ export class CityScene {
   private readonly content = new Group()
   private readonly landmarks = new Map<string, Landmark>()
   private readonly plotTops = new Map<string, MeshStandardMaterial>()
+  private readonly paletteCache = new Map<string, { normal: Texture; strong: Texture }>()
   private readonly pickables: Object3D[] = []
   private readonly raycaster = new Raycaster()
   private readonly tweens = new Map<string, Tween>()
   /** 這個場景自己建立的資源，離開頁面時要釋放；模型本身在快取裡共用，不在這裡 */
   private readonly owned: { dispose: () => void }[] = []
-  private readonly right = new Vector3()
-  private readonly up = new Vector3()
-  /** 視角要框住的範圍（相機平面座標） */
-  private bounds = { minX: -1, maxX: 1, minY: -1, maxY: 1 }
+  private readonly groundPlane = new Plane(new Vector3(0, 1, 0), 0)
+  /** 預設視角要框住的點：九個街區與主角大樓 */
+  private fitPoints: Vector3[] = []
+  private view: ViewState = { tx: 0, tz: 0, yaw: DEFAULT_YAW, scale: 50, sy: 0 }
+  /** 剛好放進整座城市的視角 */
+  private home: ViewState = { ...this.view }
+  /** 選取大樓前的視角，關抽屜時回到這裡 */
+  private saved: ViewState | null = null
+  /** 使用者動過視角後，畫面尺寸改變時不再自動回到預設視角 */
+  private userMoved = false
+  private readonly pointers = new Map<number, { x: number; y: number }>()
+  private gesture: { startX: number; startY: number; time: number; dragging: boolean; multi: boolean; rotate: boolean } | null =
+    null
   private size = { width: 1, height: 1 }
   private insetBottom = 0
   private selected: string | null = null
   private frame = 0
   private ready = false
   private disposed = false
-  private pointerStart: { x: number; y: number; time: number } | null = null
 
   constructor(options: CitySceneOptions) {
     this.options = options
@@ -189,54 +256,59 @@ export class CityScene {
     this.renderer.shadowMap.enabled = true
     this.renderer.shadowMap.type = PCFShadowMap
 
-    const direction = new Vector3(
-      Math.sin(YAW) * Math.cos(ELEVATION),
-      Math.sin(ELEVATION),
-      Math.cos(YAW) * Math.cos(ELEVATION),
-    )
-    this.camera.position.copy(direction.multiplyScalar(CAMERA_DISTANCE))
-    this.camera.lookAt(0, 0, 0)
-    this.camera.updateMatrixWorld()
-    this.right.setFromMatrixColumn(this.camera.matrixWorld, 0)
-    this.up.setFromMatrixColumn(this.camera.matrixWorld, 1)
-
     this.scene.add(this.content)
     this.addLights()
 
     const canvas = options.canvas
     canvas.addEventListener('pointerdown', this.onPointerDown)
-    canvas.addEventListener('pointerup', this.onPointerUp)
     canvas.addEventListener('pointermove', this.onPointerMove)
+    canvas.addEventListener('pointerup', this.onPointerUp)
+    canvas.addEventListener('pointercancel', this.onPointerUp)
+    canvas.addEventListener('wheel', this.onWheel, { passive: false })
+    canvas.addEventListener('contextmenu', this.onContextMenu)
     canvas.addEventListener('webglcontextrestored', this.requestRender)
   }
 
   /** 下載模型並組出城市；onProgress 回報 0–1 */
   async load(onProgress: (ratio: number) => void): Promise<void> {
     const names = [
-      ...new Set([...CITY_PLOTS.map((p) => p.model), ...SKYLINE.map((s) => s.model), ...PARASOLS.map((p) => p.model)]),
+      ...new Set([
+        ...CITY_PLOTS.map((p) => p.model),
+        ...SKYLINE.map((s) => s.model),
+        ...PARASOLS.map((p) => p.model),
+        ...PROPS.map((p) => p.model),
+      ]),
     ]
     let loaded = 0
-    const entries = await Promise.all(
-      names.map(async (name) => {
-        const gltf = await loadModel(name)
-        loaded += 1
-        onProgress(loaded / names.length)
-        return [name, gltf] as const
-      }),
-    )
+    const [entries, signs] = await Promise.all([
+      Promise.all(
+        names.map(async (name) => {
+          const gltf = await loadModel(name)
+          loaded += 1
+          onProgress(loaded / names.length)
+          return [name, gltf] as const
+        }),
+      ),
+      this.loadSignTextures(),
+    ])
     if (this.disposed) return
 
     const models = new Map(entries)
-    const source = findTexture(entries[0][1])
+    // 天際線用商業大樓套件的貼圖重畫成中性色
+    const commercial = models.get(SKYLINE[0].model)
+    const source = commercial && findTexture(commercial)
     if (!source) throw new Error('找不到模型貼圖')
 
     this.buildGround()
-    this.buildLandmarks(models, source)
+    this.buildLandmarks(models, signs)
     this.buildSkyline(models, source)
     this.buildTrees()
-    this.computeBounds()
+    this.buildProps(models)
+    this.computeFitPoints()
+    this.updateHome()
+    this.view = { ...this.home }
+    this.applyCamera()
     this.ready = true
-    this.applyView(false)
     if (this.selected) this.applySelection()
     this.playIntro()
   }
@@ -245,14 +317,49 @@ export class CityScene {
     if (width <= 0 || height <= 0) return
     this.size = { width, height }
     this.renderer.setSize(width, height, false)
-    if (this.ready) this.applyView(false)
+    if (!this.ready) return
+    this.updateHome()
+    const landmark = this.selected ? this.landmarks.get(this.selected) : undefined
+    if (landmark) this.view = this.selectionView(landmark)
+    else if (!this.userMoved) this.view = { ...this.home }
+    this.clampView()
+    this.applyCamera()
+    this.requestRender()
   }
 
   /** 底部抽屜蓋住的高度；選取的大樓會移到抽屜上方的可見區域中間 */
   setInsetBottom(px: number): void {
     if (Math.abs(px - this.insetBottom) < 1) return
     this.insetBottom = px
-    if (this.ready && this.selected) this.applyView(true)
+    const landmark = this.ready && this.selected ? this.landmarks.get(this.selected) : undefined
+    if (landmark) this.animateTo(this.selectionView(landmark))
+  }
+
+  /** 以目前畫面中心為準放大或縮小（給按鈕用） */
+  zoomBy(factor: number): void {
+    if (!this.ready) return
+    this.userMoved = true
+    this.animateTo({ ...this.view, scale: this.clampScale(this.view.scale * factor) }, 320)
+  }
+
+  /** 以目前畫面中心為軸旋轉，正值是順時針（給按鈕用） */
+  rotateBy(radians: number): void {
+    if (!this.ready) return
+    this.userMoved = true
+    this.animateTo({ ...this.view, yaw: this.view.yaw + radians }, 450)
+  }
+
+  /** 回到原本的視角；有選取大樓時，回到正面看這棟大樓 */
+  resetView(): void {
+    if (!this.ready) return
+    this.userMoved = false
+    const landmark = this.selected ? this.landmarks.get(this.selected) : undefined
+    if (landmark) {
+      this.saved = { ...this.home }
+      this.animateTo(this.selectionView(landmark, DEFAULT_YAW, false))
+    } else {
+      this.animateTo({ ...this.home })
+    }
   }
 
   /** 載入完成前呼叫也可以：會記住，等城市蓋好再套用 */
@@ -283,7 +390,17 @@ export class CityScene {
         landmark.plotTop.color.copy(plotFrom).lerp(plotTo, v * 0.55)
       })
     }
-    this.applyView(true)
+
+    // 選取時拉近到這棟大樓（保留使用者轉好的方向）；關抽屜時回到選取前的視角
+    const landmark = categoryId ? this.landmarks.get(categoryId) : undefined
+    if (landmark) {
+      this.saved ??= { ...this.view }
+      this.animateTo(this.selectionView(landmark))
+    } else {
+      const back = this.saved ?? this.home
+      this.saved = null
+      this.animateTo({ ...back })
+    }
   }
 
   /** 類別標籤錨點（屋頂上方）的螢幕座標，單位 px，原點在畫布左上 */
@@ -305,8 +422,11 @@ export class CityScene {
     cancelAnimationFrame(this.frame)
     const canvas = this.options.canvas
     canvas.removeEventListener('pointerdown', this.onPointerDown)
-    canvas.removeEventListener('pointerup', this.onPointerUp)
     canvas.removeEventListener('pointermove', this.onPointerMove)
+    canvas.removeEventListener('pointerup', this.onPointerUp)
+    canvas.removeEventListener('pointercancel', this.onPointerUp)
+    canvas.removeEventListener('wheel', this.onWheel)
+    canvas.removeEventListener('contextmenu', this.onContextMenu)
     canvas.removeEventListener('webglcontextrestored', this.requestRender)
     for (const resource of this.owned) resource.dispose()
     this.renderer.dispose()
@@ -317,7 +437,9 @@ export class CityScene {
   // ── 場景組裝 ─────────────────────────
 
   private own<T extends { dispose: () => void }>(resource: T): T {
-    this.owned.push(resource)
+    // 載入途中就離開頁面時，之後才建好的資源直接釋放
+    if (this.disposed) resource.dispose()
+    else this.owned.push(resource)
     return resource
   }
 
@@ -349,14 +471,14 @@ export class CityScene {
   }
 
   private buildGround(): void {
-    // 人行道地面往前與左右延伸到畫面外，看不到地板的邊；後緣停在天際線後方，上面露出天空
-    const GROUND_BACK = -4.6
-    const GROUND_FRONT = 20
+    // 圓角方塊的城市底座，像一座城市模型：旋轉到任何角度都完整，底座外面露出天空
+    const BASE_DEPTH = 0.6
     const ground = new Mesh(
-      this.geometry(new BoxGeometry(40, 0.2, GROUND_FRONT - GROUND_BACK)),
+      this.geometry(new RoundedBoxGeometry(BASE_SIZE, BASE_DEPTH, BASE_SIZE, 4, 0.35)),
       this.material(GROUND_COLOR),
     )
-    ground.position.set(0, -0.12, (GROUND_FRONT + GROUND_BACK) / 2)
+    // 頂面在 y = -0.02，略低於道路，避免兩個面重疊閃爍
+    ground.position.y = -0.02 - BASE_DEPTH / 2
     ground.receiveShadow = true
 
     const road = new Mesh(this.geometry(new BoxGeometry(ROAD_HALF * 2, 0.02, ROAD_HALF * 2)), this.material(ROAD_COLOR))
@@ -416,12 +538,13 @@ export class CityScene {
     this.content.add(lines)
   }
 
-  private prepareModel(gltf: GLTF, material: Material, scale: number): { model: Object3D; height: number } {
+  /** material 為 null 時保留模型原本的材質（車輛、路燈） */
+  private prepareModel(gltf: GLTF, material: Material | null, scale: number): { model: Object3D; height: number } {
     const model = gltf.scene.clone(true)
     model.scale.setScalar(scale)
     model.traverse((object) => {
       if (object instanceof Mesh) {
-        object.material = material
+        if (material) object.material = material
         object.castShadow = true
         object.receiveShadow = true
       }
@@ -430,27 +553,59 @@ export class CityScene {
     return { model, height: box.max.y }
   }
 
-  private buildLandmarks(models: Map<string, GLTF>, source: Texture): void {
-    // 同主題的大樓共用貼圖，每個主題只重畫一次
-    const themeTextures = new Map<CityThemeKey, { normal: Texture; strong: Texture }>()
-    const texturesOf = (key: CityThemeKey) => {
-      let textures = themeTextures.get(key)
-      if (!textures) {
-        const theme = CITY_THEMES[key]
-        textures = {
-          normal: this.own(recolorPalette(source, theme.wall, theme.accent)),
-          strong: this.own(recolorPalette(source, theme.wallStrong, theme.accent)),
+  /** 每個類別的招牌貼圖：醫療是紅十字，其他是和介面相同的類別圖示；圖示載入失敗就不掛招牌 */
+  private async loadSignTextures(): Promise<Map<string, Texture>> {
+    const signs = new Map<string, Texture>()
+    await Promise.all(
+      CITY_PLOTS.map(async (plot) => {
+        try {
+          if (plot.cross) {
+            signs.set(plot.categoryId, this.own(createCrossSign(MEDICAL_RED)))
+            return
+          }
+          const category = CATEGORIES.find((c) => c.id === plot.categoryId)
+          if (!category) return
+          const texture = await createIconSign(ICONS[category.icon], CITY_THEMES[plot.theme].accent)
+          signs.set(plot.categoryId, this.own(texture))
+        } catch {
+          // 招牌只是裝飾，載入失敗不影響地圖
         }
-        themeTextures.set(key, textures)
-      }
-      return textures
-    }
+      }),
+    )
+    return signs
+  }
 
+  /**
+   * 依套件與主題重畫貼圖，同一組只畫一次。
+   * 商業大樓換牆面與招牌色；住宅牆面用淺一階的顏色，主題色留給屋頂，看起來才像一般住家。
+   */
+  private paletteTextures(kit: ModelKit, themeKey: CityThemeKey, source: Texture): { normal: Texture; strong: Texture } {
+    const key = `${kit}:${themeKey}`
+    let textures = this.paletteCache.get(key)
+    if (!textures) {
+      const theme = CITY_THEMES[themeKey]
+      const accentRect = kit === 'suburban' ? PALETTE.suburbanRoof : PALETTE.commercialAccent
+      const regions = (wall: string) => [
+        { rect: PALETTE.wall, color: wall },
+        { rect: accentRect, color: theme.accent },
+      ]
+      const [normalWall, strongWall] = kit === 'suburban' ? [theme.plot, theme.wall] : [theme.wall, theme.wallStrong]
+      textures = {
+        normal: this.own(recolorPalette(source, regions(normalWall))),
+        strong: this.own(recolorPalette(source, regions(strongWall))),
+      }
+      this.paletteCache.set(key, textures)
+    }
+    return textures
+  }
+
+  private buildLandmarks(models: Map<string, GLTF>, signs: Map<string, Texture>): void {
     for (const plot of CITY_PLOTS) {
       const theme = CITY_THEMES[plot.theme]
       const gltf = models.get(plot.model)
-      if (!gltf) continue
-      const textures = texturesOf(plot.theme)
+      const source = gltf && findTexture(gltf)
+      if (!gltf || !source) continue
+      const textures = this.paletteTextures(kitOf(plot.model), plot.theme, source)
       // 每棟大樓自己一份材質：選取時要個別調亮暗與換貼圖
       const material = this.own(new MeshStandardMaterial({ map: textures.normal, roughness: 1, metalness: 0 }))
       const { model, height } = this.prepareModel(gltf, material, LANDMARK_SCALE)
@@ -461,6 +616,13 @@ export class CityScene {
       root.add(model)
       this.content.add(root)
       this.pickables.push(root)
+
+      // 招牌與直升機坪掛在模型底下：進場時跟著大樓長高，選取時跟著浮起
+      const localBox = new Box3().setFromObject(gltf.scene)
+      const sign = signs.get(plot.categoryId)
+      if (sign) this.addSign(plot, root, model, localBox, sign)
+      if (plot.helipad) this.addHelipad(model, localBox)
+      plot.trees?.forEach((tree, index) => this.content.add(this.makeTree(x + tree.dx, z + tree.dz, 0.8, index)))
 
       this.landmarks.set(plot.categoryId, {
         categoryId: plot.categoryId,
@@ -478,8 +640,69 @@ export class CityScene {
     }
   }
 
+  private signFace(texture: Texture): Material[] {
+    const edge = this.material(SIGN_EDGE_COLOR)
+    const face = this.own(new MeshStandardMaterial({ map: texture, roughness: 0.7, metalness: 0 }))
+    // BoxGeometry 的面順序：+x、-x、+y、-y、+z（正面，朝鏡頭）、-z
+    return [edge, edge, edge, edge, face, edge]
+  }
+
+  private addSign(plot: CityPlot, root: Group, model: Object3D, localBox: Box3, texture: Texture): void {
+    const materials = this.signFace(texture)
+    if (plot.sign === 'facade') {
+      // 掛在正面外牆上方；模型有縮放，尺寸換算回模型座標
+      const size = SIGN_SIZE / LANDMARK_SCALE
+      const sign = new Mesh(this.geometry(new BoxGeometry(size, size, 0.03 / LANDMARK_SCALE)), materials)
+      // 靠近屋頂：前排大樓的標籤浮在較低的位置，掛高一點才不會被擋住
+      sign.position.set(0, localBox.max.y - 0.29, localBox.max.z + 0.016)
+      sign.castShadow = true
+      model.add(sign)
+      return
+    }
+    // 住宅：前院立一支招牌
+    const group = new Group()
+    const post = new Mesh(this.geometry(new CylinderGeometry(0.022, 0.022, YARD_SIGN_HEIGHT, 8)), this.material(POST_COLOR))
+    post.position.y = YARD_SIGN_HEIGHT / 2
+    const board = new Mesh(this.geometry(new BoxGeometry(YARD_SIGN_SIZE, YARD_SIGN_SIZE, 0.03)), materials)
+    board.position.y = YARD_SIGN_HEIGHT + YARD_SIGN_SIZE / 2 - 0.04
+    post.castShadow = board.castShadow = true
+    group.add(post, board)
+    group.position.set(0.5, 0, PLOT_SIZE / 2 - 0.1)
+    root.add(group)
+  }
+
+  /** 醫院屋頂的直升機坪：白色圓盤加紅十字 */
+  private addHelipad(model: Object3D, localBox: Box3): void {
+    const width = Math.min(localBox.max.x - localBox.min.x, localBox.max.z - localBox.min.z)
+    const radius = width * 0.36
+    const top = this.own(new MeshStandardMaterial({ map: this.own(createHelipad(MEDICAL_RED)), roughness: 0.8 }))
+    const side = this.material(SIGN_EDGE_COLOR)
+    // CylinderGeometry 的材質順序：側面、頂面、底面
+    const pad = new Mesh(this.geometry(new CylinderGeometry(radius, radius, 0.03, 40)), [side, top, side])
+    pad.position.set((localBox.min.x + localBox.max.x) / 2, localBox.max.y + 0.015, (localBox.min.z + localBox.max.z) / 2)
+    pad.receiveShadow = true
+    model.add(pad)
+  }
+
+  /** 街上的車輛與路燈，保留 Kenney 原本的材質 */
+  private buildProps(models: Map<string, GLTF>): void {
+    for (const prop of PROPS) {
+      const gltf = models.get(prop.model)
+      if (!gltf) continue
+      const { model } = this.prepareModel(gltf, null, prop.scale)
+      model.position.set(prop.x, 0, prop.z)
+      model.rotation.y = prop.rotation
+      this.content.add(model)
+    }
+  }
+
   private buildSkyline(models: Map<string, GLTF>, source: Texture): void {
-    const texture = this.own(recolorPalette(source, NEUTRAL_WALL, NEUTRAL_ACCENT))
+    const texture = this.own(
+      recolorPalette(source, [
+        { rect: PALETTE.wall, color: NEUTRAL_WALL },
+        { rect: PALETTE.commercialAccent, color: NEUTRAL_ACCENT },
+      ]),
+    )
     const material = this.own(new MeshStandardMaterial({ map: texture, roughness: 1, metalness: 0 }))
     const place = (items: { model: string; x: number; z: number }[], scale: number) => {
       items.forEach((item, index) => {
@@ -497,31 +720,42 @@ export class CityScene {
     place(PARASOLS, 1.1)
   }
 
+  private treeParts?: {
+    trunk: BufferGeometry
+    canopy: BufferGeometry
+    trunkMaterial: Material
+    canopyMaterials: Material[]
+  }
+
+  private makeTree(x: number, z: number, scale: number, variant: number): Group {
+    this.treeParts ??= {
+      trunk: this.geometry(new CylinderGeometry(0.035, 0.045, 0.22, 6)),
+      canopy: this.geometry(new IcosahedronGeometry(0.2, 0)),
+      trunkMaterial: this.material(TRUNK_COLOR),
+      canopyMaterials: CANOPY_COLORS.map((color) => this.material(color, { roughness: 0.85 })),
+    }
+    const parts = this.treeParts
+    const group = new Group()
+    const trunk = new Mesh(parts.trunk, parts.trunkMaterial)
+    trunk.position.y = 0.11
+    const canopy = new Mesh(parts.canopy, parts.canopyMaterials[variant % parts.canopyMaterials.length])
+    canopy.position.y = 0.36
+    canopy.rotation.y = variant
+    trunk.castShadow = canopy.castShadow = true
+    group.add(trunk, canopy)
+    group.position.set(x, 0, z)
+    group.scale.setScalar(scale)
+    return group
+  }
+
   private buildTrees(): void {
-    const trunkGeometry = this.geometry(new CylinderGeometry(0.035, 0.045, 0.22, 6))
-    const canopyGeometry = this.geometry(new IcosahedronGeometry(0.2, 0))
-    const trunkMaterial = this.material(TRUNK_COLOR)
-    const canopyMaterials = CANOPY_COLORS.map((color) => this.material(color, { roughness: 0.85 }))
-    TREES.forEach((tree, index) => {
-      const group = new Group()
-      const trunk = new Mesh(trunkGeometry, trunkMaterial)
-      trunk.position.y = 0.11
-      const canopy = new Mesh(canopyGeometry, canopyMaterials[index % canopyMaterials.length])
-      canopy.position.y = 0.36
-      canopy.rotation.y = index
-      trunk.castShadow = canopy.castShadow = true
-      group.add(trunk, canopy)
-      group.position.set(tree.x, 0, tree.z)
-      group.scale.setScalar(tree.scale)
-      group.userData.skyline = true
-      this.content.add(group)
-    })
+    TREES.forEach((tree, index) => this.content.add(this.makeTree(tree.x, tree.z, tree.scale, index)))
   }
 
   // ── 視角 ───────────────────────────
 
-  /** 框住九個街區與主角大樓；外圈的天際線與樹讓它超出畫面邊緣 */
-  private computeBounds(): void {
+  /** 預設視角要框住的點：九個街區與主角大樓（完整長高時）；外圈的天際線與樹可以超出畫面 */
+  private computeFitPoints(): void {
     const half = PLOT_PITCH + PLOT_SIZE / 2 + 0.25
     const points: Vector3[] = []
     for (const x of [-half, half]) {
@@ -531,75 +765,142 @@ export class CityScene {
       const box = new Box3().setFromObject(landmark.root)
       points.push(new Vector3(box.min.x, box.max.y, box.min.z), new Vector3(box.max.x, box.max.y, box.max.z))
     }
-    const bounds = { minX: Infinity, maxX: -Infinity, minY: Infinity, maxY: -Infinity }
-    for (const point of points) {
-      const x = point.dot(this.right)
-      const y = point.dot(this.up)
-      bounds.minX = Math.min(bounds.minX, x)
-      bounds.maxX = Math.max(bounds.maxX, x)
-      bounds.minY = Math.min(bounds.minY, y)
-      bounds.maxY = Math.max(bounds.maxY, y)
-    }
-    this.bounds = bounds
+    this.fitPoints = points
   }
 
-  private targetFrustum(): Frustum {
+  /** 剛好放進整座城市的視角；上方留空間給最高那棟的標籤，下方留給視角按鈕列 */
+  private updateHome(): void {
     const { width: W, height: H } = this.size
-    // 上方留給最高那棟的標籤
-    const pad = { x: 12, top: 72, bottom: 12 }
-    const b = this.bounds
-    const worldW = b.maxX - b.minX
-    const worldH = b.maxY - b.minY
-    const baseScale = Math.min((W - pad.x * 2) / worldW, (H - pad.top - pad.bottom) / worldH)
-
-    const frustumAt = (px: number, py: number, sx: number, sy: number, scale: number): Frustum => ({
-      left: px - sx / scale,
-      right: px + (W - sx) / scale,
-      top: py + sy / scale,
-      bottom: py - (H - sy) / scale,
-    })
-
-    const landmark = this.selected ? this.landmarks.get(this.selected) : undefined
-    if (!landmark) {
-      return frustumAt((b.minX + b.maxX) / 2, (b.minY + b.maxY) / 2, W / 2, pad.top + (H - pad.top - pad.bottom) / 2, baseScale)
+    const pad = { x: 12, top: 72, bottom: 68 }
+    const { right, up } = axesAt(DEFAULT_YAW)
+    let minX = Infinity
+    let maxX = -Infinity
+    let minY = Infinity
+    let maxY = -Infinity
+    for (const point of this.fitPoints) {
+      const x = point.dot(right)
+      const y = point.dot(up)
+      minX = Math.min(minX, x)
+      maxX = Math.max(maxX, x)
+      minY = Math.min(minY, y)
+      maxY = Math.max(maxY, y)
     }
+    const scale = Math.min((W - pad.x * 2) / (maxX - minX), (H - pad.top - pad.bottom) / (maxY - minY))
+    const { tx, tz } = groundFromPlane((minX + maxX) / 2, (minY + maxY) / 2, DEFAULT_YAW)
+    this.home = { tx, tz, yaw: DEFAULT_YAW, scale, sy: pad.top + (H - pad.top - pad.bottom) / 2 }
+  }
 
-    // 選取時拉近，並把大樓移到抽屜上方可見區域的中間；太高的大樓縮小倍率以免標籤超出畫面
+  /**
+   * 選取一棟大樓時的視角：拉近，並把大樓移到抽屜上方可見區域的中間；太高的大樓縮小倍率，讓屋頂與標籤留在畫面內。
+   * 預設保留使用者轉好的方向；使用者已經拉得更近時也不拉遠。
+   */
+  private selectionView(landmark: Landmark, yaw = this.view.yaw, keepZoom = true): ViewState {
+    const H = this.size.height
+    const base = this.home.scale
     const visibleH = Math.max(120, H - this.insetBottom)
-    const projectedHeight = landmark.height * Math.cos(ELEVATION)
+    const projectedHeight = landmark.height * COS_E
     const fitScale = (visibleH - 96) / (projectedHeight + 0.8)
-    const scale = Math.max(baseScale, Math.min(baseScale * SELECT_ZOOM, fitScale))
+    const autoScale = Math.max(base, Math.min(base * SELECT_ZOOM, fitScale))
+    const scale = this.clampScale(keepZoom ? Math.max(autoScale, this.view.scale) : autoScale)
+
+    const { right, up } = axesAt(yaw)
     const focus = new Vector3(landmark.root.position.x, landmark.height * 0.5, landmark.root.position.z)
-    // 大樓中心放在可見區域中間；太高的大樓改成讓屋頂與標籤留在畫面內（下半截可以被抽屜蓋住）
+    const { tx, tz } = groundFromPlane(focus.dot(right), focus.dot(up), yaw)
     const labelRoom = 64
     const sy = Math.max(visibleH / 2 + 28, labelRoom + (projectedHeight / 2) * scale)
-    return frustumAt(focus.dot(this.right), focus.dot(this.up), W / 2, sy, scale)
+    return { tx, tz, yaw, scale, sy }
   }
 
-  private applyView(animate: boolean): void {
-    const to = this.targetFrustum()
+  private clampScale(scale: number): number {
+    return clamp(scale, this.home.scale * MIN_ZOOM, this.home.scale * MAX_ZOOM)
+  }
+
+  private clampView(): void {
+    this.view.scale = this.clampScale(this.view.scale)
+    this.view.tx = clamp(this.view.tx, -PAN_LIMIT, PAN_LIMIT)
+    this.view.tz = clamp(this.view.tz, -PAN_LIMIT, PAN_LIMIT)
+  }
+
+  /** 依目前的 view 擺好鏡頭：位置繞著目標點、依方位角與俯角，正交投影的範圍由縮放與 sy 決定 */
+  private applyCamera(): void {
+    const { tx, tz, yaw, scale, sy } = this.view
+    const { width: W, height: H } = this.size
     const camera = this.camera
-    if (!animate || this.options.reducedMotion) {
-      Object.assign(camera, to)
-      camera.updateProjectionMatrix()
+    camera.position.set(
+      tx + Math.sin(yaw) * COS_E * CAMERA_DISTANCE,
+      SIN_E * CAMERA_DISTANCE,
+      tz + Math.cos(yaw) * COS_E * CAMERA_DISTANCE,
+    )
+    camera.lookAt(tx, 0, tz)
+    camera.left = -W / 2 / scale
+    camera.right = W / 2 / scale
+    camera.top = sy / scale
+    camera.bottom = -(H - sy) / scale
+    camera.updateProjectionMatrix()
+    camera.updateMatrixWorld()
+  }
+
+  /** 鏡頭平順移到新視角；旋轉走最短的方向，縮放用等比內插 */
+  private animateTo(to: ViewState, duration = 650): void {
+    if (this.options.reducedMotion) {
+      this.view = { ...to }
+      this.applyCamera()
       this.requestRender()
       return
     }
-    const from: Frustum = { left: camera.left, right: camera.right, top: camera.top, bottom: camera.bottom }
+    const from = { ...this.view }
+    const turn = wrapAngle(to.yaw - from.yaw)
     this.tweens.set('camera', {
       start: performance.now(),
       delay: 0,
-      duration: 650,
+      duration,
       ease: easeInOutCubic,
       update: (t) => {
-        camera.left = from.left + (to.left - from.left) * t
-        camera.right = from.right + (to.right - from.right) * t
-        camera.top = from.top + (to.top - from.top) * t
-        camera.bottom = from.bottom + (to.bottom - from.bottom) * t
-        camera.updateProjectionMatrix()
+        this.view = {
+          tx: from.tx + (to.tx - from.tx) * t,
+          tz: from.tz + (to.tz - from.tz) * t,
+          yaw: from.yaw + turn * t,
+          scale: from.scale * (to.scale / from.scale) ** t,
+          sy: from.sy + (to.sy - from.sy) * t,
+        }
+        this.applyCamera()
       },
     })
     this.requestRender()
+  }
+
+  /** 畫布上的點（px）對應到地面上的哪裡 */
+  private screenToGround(x: number, y: number): Vector3 | null {
+    const ndc = new Vector2((x / this.size.width) * 2 - 1, -(y / this.size.height) * 2 + 1)
+    this.raycaster.setFromCamera(ndc, this.camera)
+    return this.raycaster.ray.intersectPlane(this.groundPlane, new Vector3())
+  }
+
+  /** 以畫面上一點為中心縮放與旋轉：手指底下的地面位置維持不動 */
+  private transformAround(x: number, y: number, scaleFactor: number, yawDelta: number): void {
+    const before = this.screenToGround(x, y)
+    this.view.scale = this.clampScale(this.view.scale * scaleFactor)
+    this.view.yaw += yawDelta
+    this.applyCamera()
+    const after = this.screenToGround(x, y)
+    if (before && after) {
+      this.view.tx += before.x - after.x
+      this.view.tz += before.z - after.z
+    }
+    this.clampView()
+    this.applyCamera()
+  }
+
+  /** 把畫面上 from 位置的地面拖到 to 位置 */
+  private panBy(fromX: number, fromY: number, toX: number, toY: number): void {
+    const from = this.screenToGround(fromX, fromY)
+    const to = this.screenToGround(toX, toY)
+    if (from && to) {
+      this.view.tx += from.x - to.x
+      this.view.tz += from.z - to.z
+    }
+    this.clampView()
+    this.applyCamera()
   }
 
   /** 大樓由地面長出來，前排先、後排後；減少動態效果時直接顯示完整畫面 */
@@ -682,22 +983,115 @@ export class CityScene {
     return null
   }
 
-  private readonly onPointerDown = (event: PointerEvent): void => {
-    this.pointerStart = { x: event.clientX, y: event.clientY, time: performance.now() }
+  // ── 手勢 ───────────────────────────
+  // 單指拖曳平移；兩指捏合縮放、轉動旋轉、一起移動平移；滑鼠右鍵或按住 Shift 拖曳旋轉；滾輪縮放。
+  // 沒有拖曳、只用一指、按得不久才算點選大樓。
+
+  private localPoint(event: MouseEvent): { x: number; y: number } {
+    const rect = this.options.canvas.getBoundingClientRect()
+    return { x: event.clientX - rect.left, y: event.clientY - rect.top }
   }
 
-  private readonly onPointerUp = (event: PointerEvent): void => {
-    const start = this.pointerStart
-    this.pointerStart = null
-    if (!start || !this.ready) return
-    // 拖曳或長按不算點選，避免捲動時誤觸
-    const moved = Math.hypot(event.clientX - start.x, event.clientY - start.y)
-    if (moved > 10 || performance.now() - start.time > 700) return
-    this.options.onPick(this.pick(event.clientX, event.clientY))
+  private readonly onPointerDown = (event: PointerEvent): void => {
+    if (!this.ready) return
+    if (event.pointerType === 'mouse' && event.button !== 0 && event.button !== 2) return
+    // 手指移出畫布也繼續追蹤；輔助工具送來的模擬事件不能 capture，失敗也照常處理手勢
+    try {
+      this.options.canvas.setPointerCapture(event.pointerId)
+    } catch {
+      // 忽略
+    }
+    const point = this.localPoint(event)
+    this.pointers.set(event.pointerId, point)
+    // 使用者接手時，停掉正在進行的鏡頭動畫
+    this.tweens.delete('camera')
+    if (this.pointers.size === 1) {
+      this.gesture = {
+        startX: point.x,
+        startY: point.y,
+        time: performance.now(),
+        dragging: false,
+        multi: false,
+        rotate: event.button === 2 || event.shiftKey,
+      }
+    } else if (this.gesture) {
+      this.gesture.multi = true
+    }
   }
 
   private readonly onPointerMove = (event: PointerEvent): void => {
-    if (event.pointerType !== 'mouse' || !this.ready) return
-    this.options.canvas.style.cursor = this.pick(event.clientX, event.clientY) ? 'pointer' : 'default'
+    const previous = this.pointers.get(event.pointerId)
+    if (!previous) {
+      // 滑鼠沒按著移動：指到大樓時顯示手指游標
+      if (event.pointerType === 'mouse' && this.ready) {
+        this.options.canvas.style.cursor = this.pick(event.clientX, event.clientY) ? 'pointer' : 'grab'
+      }
+      return
+    }
+    const gesture = this.gesture
+    const current = this.localPoint(event)
+    if (!gesture) return
+
+    if (this.pointers.size === 1) {
+      if (!gesture.dragging) {
+        if (Math.hypot(current.x - gesture.startX, current.y - gesture.startY) < DRAG_THRESHOLD) return
+        gesture.dragging = true
+        this.options.canvas.style.cursor = 'grabbing'
+      }
+      if (gesture.rotate) this.transformAround(this.size.width / 2, this.view.sy, 1, (current.x - previous.x) * 0.01)
+      else this.panBy(previous.x, previous.y, current.x, current.y)
+      this.pointers.set(event.pointerId, current)
+    } else {
+      const ids = [...this.pointers.keys()].slice(0, 2)
+      if (!ids.includes(event.pointerId)) {
+        this.pointers.set(event.pointerId, current)
+        return
+      }
+      const [a0, b0] = ids.map((id) => this.pointers.get(id)!)
+      this.pointers.set(event.pointerId, current)
+      const [a1, b1] = ids.map((id) => this.pointers.get(id)!)
+      const mid0 = { x: (a0.x + b0.x) / 2, y: (a0.y + b0.y) / 2 }
+      const mid1 = { x: (a1.x + b1.x) / 2, y: (a1.y + b1.y) / 2 }
+      const distance0 = Math.max(1, Math.hypot(b0.x - a0.x, b0.y - a0.y))
+      const distance1 = Math.hypot(b1.x - a1.x, b1.y - a1.y)
+      const turn = wrapAngle(Math.atan2(b1.y - a1.y, b1.x - a1.x) - Math.atan2(b0.y - a0.y, b0.x - a0.x))
+      gesture.dragging = true
+      // 手指順時針轉，城市也順時針轉
+      this.transformAround(mid0.x, mid0.y, distance1 / distance0, turn)
+      this.panBy(mid0.x, mid0.y, mid1.x, mid1.y)
+    }
+    this.userMoved = true
+    this.requestRender()
+  }
+
+  private readonly onPointerUp = (event: PointerEvent): void => {
+    if (!this.pointers.has(event.pointerId)) return
+    this.pointers.delete(event.pointerId)
+    const canvas = this.options.canvas
+    if (canvas.hasPointerCapture(event.pointerId)) canvas.releasePointerCapture(event.pointerId)
+    // 還有其他手指在畫面上：繼續手勢
+    if (this.pointers.size > 0) return
+    const gesture = this.gesture
+    this.gesture = null
+    if (event.pointerType === 'mouse') canvas.style.cursor = 'grab'
+    if (!gesture || event.type === 'pointercancel') return
+    if (!gesture.dragging && !gesture.multi && performance.now() - gesture.time < 700) {
+      this.options.onPick(this.pick(event.clientX, event.clientY))
+    }
+  }
+
+  private readonly onWheel = (event: WheelEvent): void => {
+    if (!this.ready) return
+    event.preventDefault()
+    this.tweens.delete('camera')
+    const { x, y } = this.localPoint(event)
+    this.transformAround(x, y, Math.exp(-event.deltaY * 0.0015), 0)
+    this.userMoved = true
+    this.requestRender()
+  }
+
+  /** 右鍵拖曳用來旋轉，不要跳出選單 */
+  private readonly onContextMenu = (event: Event): void => {
+    event.preventDefault()
   }
 }

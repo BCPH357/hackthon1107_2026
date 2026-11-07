@@ -70,32 +70,82 @@ export const CITY_THEMES: Record<CityThemeKey, CityTheme> = {
 export const NEUTRAL_WALL = '#f1f3f4' // grayscale50
 export const NEUTRAL_ACCENT = '#adb8be' // grayscale300
 
+/** 醫療大樓的紅十字：TownPass red600 */
+export const MEDICAL_RED = '#c2332f'
+
 export interface CityPlot {
   categoryId: string
   theme: CityThemeKey
-  /** public/city/models 底下的檔名（不含 .glb） */
+  /**
+   * 模型路徑（不含 .glb）。沒有資料夾的是 City Kit Commercial（public/city/models），
+   * suburban/ 是 City Kit Suburban 的住宅
+   */
   model: string
   /** 街區位置：col 由左到右 0–2，row 由後到前 0–2 */
   col: number
   row: number
+  /** 招牌掛法：facade 掛在正面外牆上方，yard 立在前院（住宅用） */
+  sign: 'facade' | 'yard'
+  /** 招牌畫紅十字，不畫類別圖示 */
+  cross?: boolean
+  /** 屋頂加直升機坪 */
+  helipad?: boolean
+  /** 地塊上的樹，座標相對於地塊中心 */
+  trees?: { dx: number; dz: number }[]
 }
 
 /*
  * 高樓放後排、矮樓放前排，從前上方看過去不會互相擋住，標籤也能依序排開。
  * 同主題的類別放在一起，形成「街區」：右上是照顧與健康、左側是工作與居住、左前是家庭。
+ * 每棟都有自己的特色：家與居住是獨棟住宅、醫療有紅十字與直升機坪、其他掛上類別圖示的招牌。
  * 陣列順序就是讀屏與鍵盤的順序，維持與清單相同的類別順序。
  */
 export const CITY_PLOTS: CityPlot[] = [
-  { categoryId: 'marriage-family', theme: 'family', model: 'building-a', col: 0, row: 2 },
+  { categoryId: 'marriage-family', theme: 'family', model: 'suburban/building-type-c', col: 0, row: 2, sign: 'yard' },
   // building-h 的外牆是固定的深灰磚，換不了色，所以用淺色外牆的 building-b
-  { categoryId: 'pregnancy-parenting', theme: 'family', model: 'building-b', col: 1, row: 2 },
-  { categoryId: 'disability', theme: 'care', model: 'building-g', col: 1, row: 1 },
-  { categoryId: 'elder-care', theme: 'care', model: 'building-l', col: 2, row: 0 },
-  { categoryId: 'health', theme: 'care', model: 'building-skyscraper-a', col: 1, row: 0 },
-  { categoryId: 'caregiver', theme: 'care', model: 'building-f', col: 2, row: 1 },
-  { categoryId: 'work-economy', theme: 'living', model: 'building-skyscraper-b', col: 0, row: 0 },
-  { categoryId: 'housing', theme: 'living', model: 'building-i', col: 0, row: 1 },
-  { categoryId: 'after-death', theme: 'farewell', model: 'building-c', col: 2, row: 2 },
+  { categoryId: 'pregnancy-parenting', theme: 'family', model: 'building-b', col: 1, row: 2, sign: 'facade' },
+  { categoryId: 'disability', theme: 'care', model: 'building-g', col: 1, row: 1, sign: 'facade' },
+  { categoryId: 'elder-care', theme: 'care', model: 'building-l', col: 2, row: 0, sign: 'facade' },
+  {
+    categoryId: 'health',
+    theme: 'care',
+    model: 'building-skyscraper-a',
+    col: 1,
+    row: 0,
+    sign: 'facade',
+    cross: true,
+    helipad: true,
+  },
+  { categoryId: 'caregiver', theme: 'care', model: 'building-f', col: 2, row: 1, sign: 'facade' },
+  { categoryId: 'work-economy', theme: 'living', model: 'building-skyscraper-b', col: 0, row: 0, sign: 'facade' },
+  { categoryId: 'housing', theme: 'living', model: 'suburban/building-type-e', col: 0, row: 1, sign: 'yard' },
+  {
+    categoryId: 'after-death',
+    theme: 'farewell',
+    model: 'building-c',
+    col: 2,
+    row: 2,
+    sign: 'facade',
+    trees: [
+      { dx: -0.66, dz: 0.5 },
+      { dx: 0.66, dz: 0.5 },
+    ],
+  },
+]
+
+/**
+ * 街上的車輛與路燈（Kenney Car Kit、City Kit Roads），保留原本的顏色。
+ * 車輛模型長約 3 單位，縮成 0.2 倍放進 0.5 寬的道路。rotation 0 是車頭朝 +Z（朝鏡頭）。
+ */
+export const PROPS: { model: string; x: number; z: number; rotation: number; scale: number }[] = [
+  // 左右兩側的外環道路從鏡頭看不會被大樓擋住：救護車在照顧與健康街區旁，計程車在辦公大樓旁
+  { model: 'cars/ambulance', x: 3.22, z: 0.35, rotation: Math.PI, scale: 0.2 },
+  { model: 'cars/taxi', x: -3.22, z: -0.55, rotation: 0, scale: 0.2 },
+  { model: 'cars/sedan', x: 0.9, z: 3.22, rotation: -Math.PI / 2, scale: 0.2 },
+  // 前方人行道的路燈，燈臂朝向馬路
+  { model: 'roads/light-square', x: -2.05, z: 3.64, rotation: 0, scale: 1 },
+  { model: 'roads/light-square', x: 0.05, z: 3.64, rotation: 0, scale: 1 },
+  { model: 'roads/light-square', x: 2.15, z: 3.64, rotation: 0, scale: 1 },
 ]
 
 /** 街區間距：地塊 1.6 加道路 0.5 */
@@ -143,8 +193,18 @@ export const TREES: { x: number; z: number; scale: number }[] = [
   { x: 3.9, z: 1.6, scale: 0.9 },
 ]
 
+/** 模型所屬的套件：決定貼圖裡哪些區塊要換色 */
+export type ModelKit = 'commercial' | 'suburban' | 'other'
+
+export function kitOf(model: string): ModelKit {
+  if (!model.includes('/')) return 'commercial'
+  return model.startsWith('suburban/') ? 'suburban' : 'other'
+}
+
+/** 沒有資料夾的模型在 city/models；其他套件各有自己的資料夾與 Textures/colormap.png */
 export function modelUrl(name: string): string {
-  return `${import.meta.env.BASE_URL}city/models/${name}.glb`
+  const path = name.includes('/') ? name : `models/${name}`
+  return `${import.meta.env.BASE_URL}city/${path}.glb`
 }
 
 export function plotOf(categoryId: string): CityPlot | undefined {

@@ -87,6 +87,7 @@ fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
 
 每一頁右下角都有「城市地圖」按鈕（`src/components/CityLink.vue`），網址是 `#/city`。九個類別各是一棟大樓，依主題分四色：家庭（橘）、照顧與健康（藍綠）、工作與居住（黃）、身後事（灰），顏色全部取自 TownPass 色票。點大樓或標籤會從底部滑出抽屜，列出這一類的事與進度。
 
+- 手機上單指拖曳移動、兩指捏合縮放、兩指轉動旋轉；電腦上滾輪縮放、右鍵拖曳旋轉。地圖下方有縮小、放大、逆時針、順時針、回到原本視角的按鈕，不會雙指操作也能用。
 - 從事件或步驟頁點按鈕，會帶著 `?cat=類別` 進來，直接打開那件事所在的大樓。
 - 進度和清單共用 `stores/progress`：在步驟頁打勾，地圖上的標籤與抽屜跟著更新。
 - 選取的類別記在網址，Android 返回鍵會先關抽屜。
@@ -103,7 +104,23 @@ fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
 | `textures.ts` | 依主題重畫模型貼圖的牆面與招牌顏色 |
 | `progress.ts` | 每個類別的進度與推薦 |
 
-模型在 `public/city/models/`，取自 Kenney City Kit Commercial 2.1，總共約 1.5 MB。套件附的 `variation-a.png` 已改名為模型指定的 `Textures/colormap.png`。要換模型時，請挑淺色外牆的款式：`building-h` 這類外牆是固定的深灰磚，換不了色。
+每棟大樓都有自己的特色，讓人一眼認出是哪一類：
+
+- 婚姻與家庭、居住是獨棟住宅，屋頂是主題色，前院立著類別圖示的招牌
+- 傷病與醫療的屋頂有紅十字直升機坪、正面掛紅十字招牌，右側路上停著救護車
+- 其他大樓正面掛著類別圖示的招牌，圖示和介面用的是同一套 TownPass 圖示
+- 身後事旁種了樹；街上有計程車、轎車與路燈
+
+模型總共約 2.1 MB，依套件放在 `public/city/` 底下的資料夾，每個資料夾有自己的 `Textures/colormap.png`：
+
+| 資料夾 | Kenney 套件 | 用途 |
+| --- | --- | --- |
+| `models/` | City Kit Commercial 2.1 | 七棟主角大樓、背景天際線、陽傘 |
+| `suburban/` | City Kit Suburban | 兩棟住宅 |
+| `cars/` | Car Kit | 救護車、計程車、轎車 |
+| `roads/` | City Kit Roads | 路燈 |
+
+主角大樓與住宅的牆面、招牌、屋頂會依主題重畫顏色（`src/city/textures.ts`），車輛與路燈保留原色。`models/Textures/colormap.png` 是套件附的 `variation-a.png` 改名而來。要換模型時，請挑淺色外牆的款式：`building-h` 這類外牆是固定的深灰磚，換不了色。
 
 Three.js 打包成獨立的檔案（壓縮後約 170 KB），只有打開城市地圖時才會下載。
 
@@ -121,7 +138,7 @@ Three.js 打包成獨立的檔案（壓縮後約 170 KB），只有打開城市�
 | @types/three | 0.187 | MIT |
 | wrangler（只用來部署，不會打包進網頁） | 4.158 | MIT 或 Apache-2.0 |
 
-城市地圖的 3D 模型取自 [Kenney City Kit Commercial 2.1](https://kenney.nl/assets/city-kit-commercial)，授權為 CC0（公眾領域），授權檔在 `public/city/KENNEY-LICENSE.txt`。
+城市地圖的 3D 模型取自 Kenney 的 [City Kit Commercial](https://kenney.nl/assets/city-kit-commercial)、[City Kit Suburban](https://kenney.nl/assets/city-kit-suburban)、[Car Kit](https://kenney.nl/assets/car-kit)、[City Kit Roads](https://kenney.nl/assets/city-kit-roads)，授權皆為 CC0（公眾領域），授權檔在 `public/city/KENNEY-LICENSE.txt`。
 
 沒有使用圖示套件：
 

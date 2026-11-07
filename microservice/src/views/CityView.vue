@@ -175,26 +175,39 @@ interface PinBox {
   h: number
   lift: number
   shift: number
+  /** 大樓被移出畫面：標籤先藏起來，不擠在畫面邊緣 */
+  offscreen: boolean
 }
 
 function computePinBoxes(): PinBox[] {
   if (!scene || !stage.value) return []
   const width = stage.value.clientWidth
+  const height = stage.value.clientHeight
   const boxes: PinBox[] = []
   for (const pin of pins.value) {
     const position = scene.screenPosition(pin.id)
     const size = pinSizes.get(pin.id)
     if (!position || !size) continue
-    // 標籤不超出畫面左右；錨點（細線）仍對準屋頂
+    const offscreen = position.x < 0 || position.x > width || position.y < 0 || position.y > height
+    // 屋頂在畫面內但靠近邊緣時，標籤往內挪，不超出畫面左右；錨點（細線）仍對準屋頂
     const half = size.w / 2
     const center = Math.min(Math.max(position.x, half + PIN_GAP), width - half - PIN_GAP)
-    boxes.push({ id: pin.id, x: position.x, y: position.y, w: size.w, h: size.h, lift: PIN_LIFT, shift: center - position.x })
+    boxes.push({
+      id: pin.id,
+      x: position.x,
+      y: position.y,
+      w: size.w,
+      h: size.h,
+      lift: PIN_LIFT,
+      shift: offscreen ? 0 : center - position.x,
+      offscreen,
+    })
   }
   // 由上往下檢查：兩個標籤重疊時，把位置較高的那個再往上推
-  // 選了一棟之後其他標籤是隱藏的，不參與避讓，否則會把選取的標籤推出畫面
-  const visible = (selectedId.value ? boxes.filter((box) => box.id === selectedId.value) : boxes).sort(
-    (a, b) => a.y - b.y,
-  )
+  // 選了一棟之後其他標籤是隱藏的、移出畫面的也是，都不參與避讓，否則會把看得到的標籤推出畫面
+  const visible = boxes
+    .filter((box) => !box.offscreen && (!selectedId.value || box.id === selectedId.value))
+    .sort((a, b) => a.y - b.y)
   for (let pass = 0; pass < 6; pass++) {
     let moved = false
     for (let i = 0; i < visible.length; i++) {
@@ -225,6 +238,9 @@ function layoutPins(): void {
     el.style.transform = `translate3d(${box.x}px, ${box.y}px, 0)`
     el.style.setProperty('--lift', `${box.lift}px`)
     el.style.setProperty('--shift', `${box.shift}px`)
+    // 用 data 屬性而不是 class：Vue 重新渲染時會改寫 class，但不會動到它沒管的屬性
+    if (box.offscreen) el.dataset.offscreen = ''
+    else delete el.dataset.offscreen
   }
 }
 
@@ -245,7 +261,7 @@ async function checkCrowded(): Promise<void> {
   await nextTick()
   measurePins()
   layoutPins()
-  crowded.value = computePinBoxes().some((box) => box.y - box.lift - box.h < 0)
+  crowded.value = computePinBoxes().some((box) => !box.offscreen && box.y - box.lift - box.h < 0)
 }
 
 // 改成排在下方時，清掉浮動定位的 style
@@ -256,6 +272,7 @@ watch(gridLabels, async (grid) => {
     el.style.removeProperty('transform')
     el.style.removeProperty('--lift')
     el.style.removeProperty('--shift')
+    delete el.dataset.offscreen
   }
 })
 </script>
@@ -268,6 +285,7 @@ watch(gridLabels, async (grid) => {
           <h1 class="city__title">點一棟大樓，看看要辦的事</h1>
           <RouterLink to="/events" class="city__list-link">改用清單</RouterLink>
         </div>
+        <p v-if="status === 'ready'" class="city__hint">兩指可以放大縮小、旋轉，也可以用地圖下方的按鈕</p>
         <ul class="legend" aria-label="大樓顏色代表的主題">
           <li v-for="theme in themes" :key="theme.key" class="legend__item" :style="{ '--accent': theme.accent }">
             <span class="legend__dot" aria-hidden="true" />
@@ -286,6 +304,26 @@ watch(gridLabels, async (grid) => {
             <span class="city__loading-icon"><AppIcon name="city" size="2rem" /></span>
             <span>城市蓋起來中⋯ {{ loadPercent }}%</span>
             <span class="city__loading-bar" aria-hidden="true"><span :style="{ width: `${loadPercent}%` }" /></span>
+          </div>
+          <!-- 不會雙指操作也能調整視角（WCAG 2.5.1：手勢要有單指的替代方式） -->
+          <div v-if="status === 'ready'" class="map-controls" role="toolbar" aria-label="調整地圖視角">
+            <button type="button" class="map-controls__btn" aria-label="縮小" @click="scene?.zoomBy(1 / 1.4)">
+              <AppIcon name="minus" size="1.375rem" />
+            </button>
+            <button type="button" class="map-controls__btn" aria-label="放大" @click="scene?.zoomBy(1.4)">
+              <AppIcon name="plus" size="1.375rem" />
+            </button>
+            <span class="map-controls__divider" aria-hidden="true" />
+            <button type="button" class="map-controls__btn" aria-label="逆時針旋轉" @click="scene?.rotateBy(-Math.PI / 4)">
+              <AppIcon name="rotate-ccw" size="1.375rem" />
+            </button>
+            <button type="button" class="map-controls__btn" aria-label="順時針旋轉" @click="scene?.rotateBy(Math.PI / 4)">
+              <AppIcon name="rotate-cw" size="1.375rem" />
+            </button>
+            <span class="map-controls__divider" aria-hidden="true" />
+            <button type="button" class="map-controls__btn" aria-label="回到原本的視角" @click="scene?.resetView()">
+              <AppIcon name="recenter" size="1.375rem" />
+            </button>
           </div>
           <p v-else-if="status === 'unsupported' || status === 'error'" class="city__notice" role="status">
             <AppIcon name="info" />
@@ -433,6 +471,7 @@ watch(gridLabels, async (grid) => {
   min-height: 0;
 }
 
+/* 地圖上的觸控全部交給手勢（拖曳、捏合、旋轉），不讓瀏覽器拿去捲動或縮放整頁 */
 .city__canvas {
   position: absolute;
   inset: 0;
@@ -440,7 +479,54 @@ watch(gridLabels, async (grid) => {
   display: block;
   width: 100%;
   height: 100%;
-  touch-action: pan-y;
+  touch-action: none;
+  cursor: grab;
+}
+
+.city__hint {
+  font-size: var(--fs-caption);
+  color: var(--c-gray-600);
+}
+
+/* 地圖下方置中的按鈕列；抽屜打開時被抽屜蓋住 */
+.map-controls {
+  position: absolute;
+  left: 50%;
+  bottom: 0.75rem;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 94%);
+  box-shadow:
+    0 4px 14px rgb(0 0 0 / 14%),
+    0 0 0 1px rgb(0 0 0 / 5%);
+  transform: translateX(-50%);
+}
+
+.map-controls__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--c-primary-700);
+}
+
+.map-controls__btn:active {
+  background: var(--c-primary-50);
+}
+
+.map-controls__divider {
+  width: 1px;
+  height: 1.5rem;
+  margin: 0 0.125rem;
+  background: var(--c-gray-100);
 }
 
 /* 兩朵慢慢飄的雲，只在天空露出來的地方看得到 */
@@ -629,8 +715,15 @@ watch(gridLabels, async (grid) => {
   pointer-events: none;
 }
 
+.pins--overlay .pin[data-offscreen] .pin__chip,
+.pins--overlay .pin[data-offscreen] .pin__stem {
+  opacity: 0;
+  pointer-events: none;
+}
+
 .pins--overlay .pin--dimmed:focus-visible .pin__chip,
-.pins--overlay .pin--dimmed:focus-visible .pin__stem {
+.pins--overlay .pin--dimmed:focus-visible .pin__stem,
+.pins--overlay .pin[data-offscreen]:focus-visible .pin__chip {
   opacity: 1;
 }
 
@@ -675,11 +768,21 @@ watch(gridLabels, async (grid) => {
   position: absolute;
   left: 0;
   bottom: var(--lift, 8px);
+  /* 浮在地圖上時縮小，少擋住後面大樓的招牌；可點範圍由 ::before 補回 44px */
+  min-height: 2.25rem;
+  padding-top: 0.25rem;
+  padding-bottom: 0.25rem;
   transform: translateX(calc(-50% + var(--shift, 0px)));
   transform-origin: 50% 100%;
   white-space: nowrap;
   pointer-events: auto;
   cursor: pointer;
+}
+
+.pins--overlay .pin__chip::before {
+  content: '';
+  position: absolute;
+  inset: -0.25rem -0.125rem;
 }
 
 .pins--overlay .pin__stem {

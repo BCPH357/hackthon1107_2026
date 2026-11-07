@@ -16,5 +16,5 @@ paths:
 - 若改回免費版 ngrok：它會先顯示警告頁，fetch 時要加上 `ngrok-skip-browser-warning` header；Cloudflare 沒有警告頁
 - 色票與字級以 `lib/util/tp_colors.dart`、`lib/util/tp_text_styles.dart` 為準，字體用 PingFang TC
 - 觸控目標至少 48×48px；文字放大到 200% 時版面不能破掉
-- 城市地圖（`src/city/`）的模型共用一張調色盤貼圖，只有牆面與招牌兩塊會依主題重畫；換模型時要挑淺色外牆的款式，外牆是固定深灰磚的（例如 `building-h`）換不了色
+- 城市地圖（`src/city/`）的 Kenney 模型用調色盤貼圖，只有牆面、招牌（商業大樓）或屋頂（住宅）會依主題重畫；換模型時要挑淺色外牆的款式，外牆是固定深灰磚的（例如 `building-h`）換不了色。不同套件的模型要放在各自的資料夾，因為它們都指向同名的 `Textures/colormap.png`
 - 城市地圖的 Three.js 只能在 `CityView` 這條延遲載入的路由裡 import，否則會打包進主程式，所有頁面都變慢

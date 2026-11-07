@@ -16,6 +16,11 @@ export type IconName =
   | 'check-square'
   | 'speaker'
   | 'stop'
+  | 'plus'
+  | 'minus'
+  | 'rotate-cw'
+  | 'rotate-ccw'
+  | 'recenter'
   | 'city'
   | 'close'
 
@@ -77,6 +82,21 @@ withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' 
     <template v-else-if="name === 'check-square'">
       <rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" stroke="currentColor" />
       <path d="M8 12.3l2.8 2.8L16.2 9.5" stroke="#fff" />
+    </template>
+    <path v-else-if="name === 'plus'" d="M12 5v14M5 12h14" />
+    <path v-else-if="name === 'minus'" d="M5 12h14" />
+    <template v-else-if="name === 'rotate-cw'">
+      <path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3" />
+      <path d="M19.5 4.5v4h-4" />
+    </template>
+    <template v-else-if="name === 'rotate-ccw'">
+      <path d="M4.5 12a7.5 7.5 0 1 0 2.2-5.3" />
+      <path d="M4.5 4.5v4h4" />
+    </template>
+    <template v-else-if="name === 'recenter'">
+      <circle cx="12" cy="12" r="6.5" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+      <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3" />
     </template>
     <template v-else-if="name === 'city'">
       <path d="M3 21h18" />
