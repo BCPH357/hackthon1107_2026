@@ -13,7 +13,7 @@ import 'package:town_pass/gen/assets.gen.dart';
 /// 下面的 defaultValue 是目前 demo 用的 Cloudflare Tunnel 網址；重開 cloudflared 後網址會變，要跟著換。
 const String lifeEventsServiceUrl = String.fromEnvironment(
   'LIFE_EVENTS_URL',
-  defaultValue: 'https://folding-desktops-seeking-cet.trycloudflare.com/',
+  defaultValue: 'https://direction-resistant-walt-availability.trycloudflare.com/',
 );
 
 enum MyServiceItemId {
