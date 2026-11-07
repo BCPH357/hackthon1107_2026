@@ -38,9 +38,17 @@ export interface Option<T extends string> {
   hint?: string
 }
 
+/** 官方網頁或開放資料集，顯示在資源卡片下方，點了用 App 開啟 */
+export interface SourceDef {
+  title: string
+  url: string
+}
+
 export interface ResourceDef {
   name: string
   description: string
+  /** 這張卡片內容的資料來源（官方網頁、開放資料集） */
+  sources?: SourceDef[]
   /** 符合任一特徵時標示「你可能符合」 */
   for?: ProfileKey[]
   phone?: string
@@ -95,6 +103,11 @@ export interface EventDef {
   icon?: IconKey
   /** 沒有步驟代表內容建置中 */
   steps?: StepDef[]
+  /**
+   * 隱私事件（家暴求助）：同住的家人可能就是加害人，手機上不能留下痕跡。
+   * 不記住上次打開、打勾進度不存進手機、不能交給家人、不列在「常見的事」，頁面上方有 110、113 與快速離開。
+   */
+  sensitive?: boolean
 }
 
 export interface CategoryDef {

@@ -20,4 +20,5 @@ paths:
 - 城市地圖的 Three.js 只能在 `CityView` 這條延遲載入的路由裡 import，否則會打包進主程式，所有頁面都變慢
 - AR 方向指引（`ArDirectionView`）的相機與方向感測器請求，必須在點擊事件裡同步送出（不能先 await 別的東西），否則 iPhone 直接拒絕；離開頁面或切到背景時一定要 `closeCamera`
 - `DeviceOrientationEvent.requestPermission` 回答「拒絕」不代表收不到數值（新版 Chrome 也有這個 API），一律先監聽，逾時沒數值才判定
+- 步驟的每一張資源卡片（ResourceDef）都要有 `sources`，指向對應內容的官方網頁，網址加在 `src/data/sources.ts`；有 AR 地點的步驟，資源裡要有附臺北資料大平台資料集的卡片（`districtOffice()`、`householdOffice()`、`cityHospital()`）
 - 地點座標只能來自 `src/data/places.json`（`node scripts/fetch-places.mjs` 從臺北資料大平台產生），開放資料沒有的地點不要手動補座標，寫進 `missing` 由畫面說明

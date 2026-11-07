@@ -31,6 +31,8 @@ export interface DataSource {
 export const PLACES = data.places as Place[]
 export const MISSING_PLACES = data.missing as MissingPlace[]
 export const PLACE_SOURCES: DataSource[] = Object.values(data.sources)
+export const PLACE_SOURCE_TOILETS: DataSource = data.sources.toilets
+export const PLACE_SOURCE_HOUSEHOLD: DataSource = data.sources.household
 export const PLACES_FETCHED_AT = data.fetchedAt
 export const PLACES_LICENSE = data.license
 

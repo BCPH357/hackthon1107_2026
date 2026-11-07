@@ -1,7 +1,7 @@
 import { nextTick } from 'vue'
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { APP_NAME } from './config'
-import { findEvent } from './data/lifeEvents'
+import { findEvent, isSensitiveEvent } from './data/lifeEvents'
 import { findLink } from './stores/cases'
 import { identity } from './stores/identity'
 import { lastEventId } from './stores/progress'
@@ -61,7 +61,12 @@ const routes: RouteRecordRaw[] = [
     component: HandoverView,
     props: true,
     meta: { title: '交棒給家人' },
-    beforeEnter: (to) => (findEvent(String(to.params.eventId))?.steps?.length ? true : '/events'),
+    beforeEnter: (to) => {
+      const event = findEvent(String(to.params.eventId))
+      if (!event?.steps?.length) return '/events'
+      // 隱私事件（家暴求助）不能交給家人：同住的家人可能就是加害人
+      return event.sensitive ? `/events/${event.id}` : true
+    },
   },
   {
     path: '/events/:eventId/steps/:stepId',
@@ -105,7 +110,7 @@ router.beforeEach((to) => {
   isFirstNavigation = false
 
   // 再次從台北通進入時，直接回到上次的事件（計畫書「序幕」）
-  if (first && to.path === '/' && lastEventId.value && findEvent(lastEventId.value)) {
+  if (first && to.path === '/' && lastEventId.value && findEvent(lastEventId.value) && !isSensitiveEvent(lastEventId.value)) {
     return `/events/${lastEventId.value}`
   }
   if (to.meta.needsForWhom && !identity.forWhom) return '/identity/who'

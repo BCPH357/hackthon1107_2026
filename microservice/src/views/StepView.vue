@@ -4,11 +4,12 @@ import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import HelpCard from '../components/HelpCard.vue'
 import PageLayout from '../components/PageLayout.vue'
+import SafetyCard from '../components/SafetyCard.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
 import { DATA_NOTICE } from '../config'
 import { findEvent } from '../data/lifeEvents'
 import { TOWNPASS_SERVICES, isServiceAvailable } from '../data/townpassServices'
-import { callPhone, openMapSearch, openTownPassService } from '../services/townpass'
+import { callPhone, openLink, openMapSearch, openTownPassService } from '../services/townpass'
 import { currentKey, speakChunks, speaking, stopSpeaking, ttsSupported, type SpeechChunk } from '../services/speech'
 import { isEasyRead } from '../stores/display'
 import { profiles, taipeiDistrict } from '../stores/identity'
@@ -111,6 +112,8 @@ function undo() {
       </div>
     </div>
 
+    <SafetyCard v-if="event.sensitive" />
+
     <!-- CLAUDE_UI_GUIDE 2.5：固定依「要做什麼、要準備什麼、去哪裡辦、可以用的資源」的順序 -->
     <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'what' }" aria-labelledby="what-title">
       <h2 id="what-title" class="section-title">要做什麼</h2>
@@ -192,6 +195,20 @@ function undo() {
             <AppIcon name="phone" />
             撥打 {{ resource.phone }}
           </button>
+          <!-- 這張卡片內容的出處：官方說明網頁，有 AR 地點的另附臺北資料大平台資料集 -->
+          <div v-if="resource.sources?.length" class="resource__sources">
+            <span class="resource__sources-label">資料來源</span>
+            <button
+              v-for="source in resource.sources"
+              :key="source.url"
+              type="button"
+              class="resource__source"
+              @click="openLink(source.url)"
+            >
+              <span>{{ source.title }}</span>
+              <AppIcon name="arrow-up-right" class="resource__source-icon" />
+            </button>
+          </div>
         </li>
       </ul>
 
@@ -427,8 +444,44 @@ function undo() {
   padding-left: 0;
 }
 
+.resource__sources {
+  display: flex;
+  flex-direction: column;
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--c-gray-100);
+}
+
+.resource__sources-label {
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  color: var(--c-gray-600);
+}
+
+/* 連結樣式的按鈕：網址交給 App 開；高度至少 48px 方便點 */
+.resource__source {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: var(--tap);
+  padding: 0.25rem 0;
+  border: 0;
+  background: none;
+  color: var(--c-primary-700);
+  font-size: var(--fs-body);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.resource__source-icon {
+  flex: none;
+}
+
+/* 字放大到 200% 時，「尚未開放」標籤換到下一行，名稱不會被擠成一行兩個字 */
 .service {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.75rem;
   width: 100%;
@@ -446,7 +499,8 @@ function undo() {
 }
 
 .service__text {
-  flex: 1;
+  flex: 1 1 8rem;
+  min-width: 0;
   display: flex;
   flex-direction: column;
 }

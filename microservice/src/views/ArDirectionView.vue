@@ -9,10 +9,7 @@ import ArViewport from '../components/ArViewport.vue'
 import PageLayout from '../components/PageLayout.vue'
 import { findEvent } from '../data/lifeEvents'
 import {
-  PLACE_SOURCES,
   PLACE_TYPE_LABEL,
-  PLACES_FETCHED_AT,
-  PLACES_LICENSE,
   PREFER_OWN_DISTRICT,
   byDistance,
   missingInDistrict,
@@ -27,7 +24,6 @@ import {
   callPhone,
   getCurrentPosition,
   isInApp,
-  openLink,
   openMapSearch,
   openWalkingDirections,
   type DevicePosition,
@@ -536,22 +532,6 @@ const isHospital = computed(() => placeType.value === 'hospital')
       <span>相機畫面只在你的手機上顯示，不會錄影或上傳。位置只用來計算方向和距離，不會儲存。</span>
     </p>
 
-    <section class="sources" aria-labelledby="sources-title">
-      <h2 id="sources-title" class="sources__title">
-        <AppIcon name="info" />
-        資料來源：臺北資料大平台
-      </h2>
-      <ul class="sources__list">
-        <li v-for="source in PLACE_SOURCES" :key="source.url">
-          <button type="button" class="btn btn--ghost btn--sm sources__link" @click="openLink(source.url)">
-            {{ source.title }}
-            <AppIcon name="arrow-up-right" />
-          </button>
-        </li>
-      </ul>
-      <p class="muted">以機關所在建物的公廁登記座標代表機關位置。{{ PLACES_LICENSE }}，{{ PLACES_FETCHED_AT }} 擷取。</p>
-    </section>
-
     <template #footer>
       <template v-if="phase === 'intro'">
         <button type="button" class="btn btn--primary btn--block" @click="start(true)">
@@ -707,33 +687,5 @@ const isHospital = computed(() => placeType.value === 'hospital')
 .notice :deep(svg) {
   flex: none;
   margin-top: 0.2em;
-}
-
-.sources {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.sources__title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: var(--fs-body);
-  font-weight: 600;
-  color: var(--c-gray-700);
-}
-
-.sources__list {
-  display: flex;
-  flex-direction: column;
-}
-
-.sources__link {
-  justify-content: flex-start;
-  padding-left: 0;
-  text-align: left;
-  text-decoration: underline;
-  text-underline-offset: 0.2em;
 }
 </style>

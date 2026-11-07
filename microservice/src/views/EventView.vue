@@ -3,6 +3,7 @@ import { computed, onMounted, watchEffect } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import HelpCard from '../components/HelpCard.vue'
 import PageLayout from '../components/PageLayout.vue'
+import SafetyCard from '../components/SafetyCard.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
 import { DATA_NOTICE } from '../config'
 import { categoryOf, findEvent } from '../data/lifeEvents'
@@ -32,9 +33,16 @@ const allDone = computed(() => steps.value.length > 0 && done.value === steps.va
 
 useDocumentTitle(() => event.value.title)
 
-// 記住有內容的事件，下次打開服務直接回到這裡
+// 記住有內容的事件，下次打開服務直接回到這裡；隱私事件（家暴求助）不記，避免被同住的人看到
 watchEffect(() => {
-  if (steps.value.length) lastEventId.value = event.value.id
+  if (steps.value.length && !event.value.sensitive) lastEventId.value = event.value.id
+})
+
+// 進度說明：隱私事件不存進手機，要講清楚
+const progressNote = computed(() => {
+  if (event.value.sensitive) return '打勾只在這次使用時記得，關掉服務就清除，不會留在手機上。'
+  if (elderCase.value) return '這件事已經交棒，打勾會同步給家人。'
+  return '打勾只記在這支手機上，幫你記得做到哪裡。'
 })
 
 // ---- 交棒給家人 ----
@@ -84,6 +92,8 @@ onMounted(async () => {
       <p v-if="event.intro" class="lead">{{ event.intro }}</p>
     </div>
 
+    <SafetyCard v-if="event.sensitive" />
+
     <template v-if="steps.length">
       <div class="progress">
         <p class="progress__text">我的進度：已辦好 {{ done }}/{{ steps.length }} 步</p>
@@ -92,7 +102,7 @@ onMounted(async () => {
         </div>
         <!-- CLAUDE_UI_GUIDE 2.4：打勾只是本機進度，不可當作政府已受理 -->
         <p class="muted">
-          {{ elderCase ? '這件事已經交棒，打勾會同步給家人。' : '打勾只記在這支手機上，幫你記得做到哪裡。' }}不代表機關已經受理。
+          {{ progressNote }}不代表機關已經受理。
         </p>
       </div>
 
@@ -134,7 +144,7 @@ onMounted(async () => {
             </button>
             <!-- 做不到的步驟（例如要臨櫃）交給家人；已辦好的步驟不用交 -->
             <button
-              v-if="!isStepDone(event.id, step.id)"
+              v-if="!isStepDone(event.id, step.id) && !event.sensitive"
               type="button"
               class="step__handover"
               :class="{ 'step__handover--on': isMarked(event.id, step.id) }"
@@ -158,7 +168,7 @@ onMounted(async () => {
       <p>這件事的步驟我們還在整理，可以先撥打 1999，請專人告訴你要怎麼辦。</p>
     </section>
 
-    <section v-if="steps.length && (markedCount || elderCase)" class="card handover" aria-labelledby="handover-title">
+    <section v-if="steps.length && !event.sensitive && (markedCount || elderCase)" class="card handover" aria-labelledby="handover-title">
       <h2 id="handover-title" class="section-title">交給家人</h2>
       <p v-if="pending">已選 {{ markedCount }} 步要交給家人，按下面的按鈕交棒後才會生效。</p>
       <p v-else>已經交給家人 {{ handedCount }} 步。家人辦好後，這裡會自動打勾。</p>
