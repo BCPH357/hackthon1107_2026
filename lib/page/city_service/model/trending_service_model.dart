@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:town_pass/gen/assets.gen.dart';
+import 'package:town_pass/page/city_service/model/my_service_model.dart';
 
 abstract final class TrendingServiceModel {
   static List<TrendingService> get serviceList {
     return [
+      TrendingService(
+        title: '一步一步來',
+        icon: Assets.svg.iconLifeEvents.svg(),
+        url: lifeEventsServiceUrl,
+      ),
       TrendingService(
         title: '找地點',
         icon: Assets.svg.iconLocationSearch.svg(),

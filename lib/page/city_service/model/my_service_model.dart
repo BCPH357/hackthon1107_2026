@@ -7,7 +7,17 @@ import 'package:town_pass/gen/assets.gen.dart';
 // First, add new service within the MyServiceItemId enum;
 // Then add MyServiceItem within MyServiceIdExt extension.
 
+/// 「一步一步來」微服務（microservice/）的網址，必須是 https：Android 不允許 http。
+/// ngrok 網址會變，建置時可以直接帶入，不用改程式：
+///   fvm flutter run --dart-define=LIFE_EVENTS_URL=https://你的網域.ngrok-free.app/
+/// 有固定網址後，把下面的 defaultValue 換掉即可。
+const String lifeEventsServiceUrl = String.fromEnvironment(
+  'LIFE_EVENTS_URL',
+  defaultValue: 'https://YOUR-NGROK-DOMAIN.ngrok-free.app/',
+);
+
 enum MyServiceItemId {
+  lifeEvents,
   dedicatedLine,
   districtOffice,
   reportIssue,
@@ -35,6 +45,13 @@ enum MyServiceItemId {
 extension MyServiceIdExt on MyServiceItemId {
   MyServiceItem get item {
     return switch (this) {
+      MyServiceItemId.lifeEvents => MyServiceItem(
+          title: '一步一步來',
+          description: '人生大事要辦什麼、去哪辦，一步一步帶你完成',
+          icon: Assets.svg.iconLifeEvents.svg(),
+          category: MyServiceCategory.cityService,
+          destinationUrl: lifeEventsServiceUrl,
+        ),
       MyServiceItemId.dedicatedLine => MyServiceItem(
           title: '1999',
           description: '播打網路語音通話',
