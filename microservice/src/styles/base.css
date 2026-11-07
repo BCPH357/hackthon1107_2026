@@ -1,0 +1,346 @@
+/*
+ * 色票與字級取自 TownPass 的 lib/util/tp_colors.dart、tp_text_styles.dart。
+ * 有文字的實心按鈕用 primary-700，白字對比 5.9:1（primary-500 只有 2.4:1，長者看不清楚）。
+ * 尺寸一律用 rem，使用者把字放大到 200% 時版面跟著放大、不會破版。
+ */
+:root {
+  color-scheme: light;
+
+  --c-primary-50: #edf8fa;
+  --c-primary-100: #dbf1f5;
+  --c-primary-200: #b4e2ea;
+  --c-primary-300: #93d4df;
+  --c-primary-500: #5ab4c5;
+  --c-primary-600: #468d9b;
+  --c-primary-700: #356c77;
+  --c-primary-800: #22474e;
+
+  --c-secondary-50: #fdf8ed;
+  --c-secondary-100: #fcf2df;
+  --c-secondary-200: #f8e3bc;
+  --c-secondary-500: #f5ba4b;
+  --c-secondary-800: #74521b;
+
+  --c-gray-50: #f1f3f4;
+  --c-gray-100: #e3e7e9;
+  --c-gray-200: #cad1d5;
+  --c-gray-300: #adb8be;
+  --c-gray-500: #738995;
+  --c-gray-600: #5e6d76;
+  --c-gray-700: #475259;
+  --c-gray-800: #30383d;
+  --c-gray-900: #171b1d;
+
+  --c-orange-50: #fdf3ec;
+  --c-orange-700: #ae501f;
+  --c-white: #ffffff;
+
+  /* TPTextStyles：h1 36・h2 24・title 18・h3 16・body 14・caption 12 */
+  --fs-h1: 2.25rem;
+  --fs-h2: 1.5rem;
+  --fs-title: 1.125rem;
+  --fs-h3: 1rem;
+  --fs-body: 0.875rem;
+  --fs-caption: 0.75rem;
+
+  --font: 'PingFang TC', 'Roboto', 'Noto Sans TC', 'Microsoft JhengHei', system-ui, -apple-system, sans-serif;
+
+  --radius: 0.875rem;
+  --radius-sm: 0.5rem;
+  --tap: 3rem; /* 觸控目標至少 48px */
+  --content-max: 35rem;
+  --gutter: 1rem;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --shadow: 0 1px 2px rgb(23 27 29 / 6%), 0 2px 10px rgb(23 27 29 / 6%);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: var(--fs-h3);
+  line-height: 1.6;
+  color: var(--c-gray-900);
+  background: var(--c-gray-50);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-wrap: anywhere;
+}
+
+h1,
+h2,
+h3,
+p,
+ul,
+ol,
+fieldset,
+legend {
+  margin: 0;
+  padding: 0;
+}
+
+fieldset {
+  border: 0;
+  min-width: 0;
+}
+
+ul,
+ol {
+  list-style: none;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+a {
+  color: var(--c-primary-700);
+}
+
+:focus-visible {
+  outline: 3px solid var(--c-secondary-500);
+  outline-offset: 2px;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── 文字 ───────────────────────────── */
+
+.page-title {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  line-height: 1.35;
+}
+
+.section-title {
+  font-size: var(--fs-title);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.lead {
+  color: var(--c-gray-700);
+}
+
+.eyebrow {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  color: var(--c-primary-700);
+}
+
+.muted {
+  font-size: var(--fs-body);
+  color: var(--c-gray-600);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.stack--lg {
+  gap: 1.5rem;
+}
+
+/* ── 按鈕 ───────────────────────────── */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--tap);
+  padding: 0.625rem 1.25rem;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius);
+  font-size: var(--fs-title);
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.15s ease;
+}
+
+.btn--primary {
+  background: var(--c-primary-700);
+  color: var(--c-white);
+}
+
+.btn--primary:active {
+  background: var(--c-primary-800);
+}
+
+.btn--primary:disabled {
+  background: var(--c-gray-200);
+  color: var(--c-gray-700);
+  cursor: not-allowed;
+}
+
+.btn--secondary {
+  background: var(--c-white);
+  border-color: var(--c-primary-500);
+  color: var(--c-primary-700);
+}
+
+.btn--secondary:active {
+  background: var(--c-primary-50);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--c-primary-700);
+}
+
+.btn--ghost:active {
+  background: var(--c-primary-50);
+}
+
+.btn--danger {
+  background: var(--c-white);
+  border-color: #c2332f;
+  color: #c2332f;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn--sm {
+  font-size: var(--fs-h3);
+  padding: 0.5rem 0.875rem;
+}
+
+/* ── 卡片與標籤 ───────────────────────── */
+
+.card {
+  background: var(--c-white);
+  border-radius: var(--radius);
+  padding: 1rem;
+  box-shadow: var(--shadow);
+}
+
+.card--tint {
+  background: var(--c-primary-50);
+  box-shadow: none;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  font-size: var(--fs-caption);
+  font-weight: 600;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+.badge--primary {
+  background: var(--c-primary-50);
+  color: var(--c-primary-700);
+}
+
+.badge--match {
+  background: var(--c-secondary-100);
+  color: var(--c-secondary-800);
+}
+
+.badge--counter {
+  background: var(--c-secondary-100);
+  color: var(--c-secondary-800);
+}
+
+.badge--visit {
+  background: var(--c-orange-50);
+  color: var(--c-orange-700);
+}
+
+.badge--muted {
+  background: var(--c-gray-100);
+  color: var(--c-gray-700);
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.tag {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  background: var(--c-white);
+  border: 1px solid var(--c-primary-200);
+  font-size: var(--fs-body);
+  color: var(--c-primary-800);
+}
+
+/* ── 表單 ───────────────────────────── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.field__label {
+  font-size: var(--fs-title);
+  font-weight: 600;
+}
+
+/* iOS 輸入框字小於 16px 會自動放大畫面，所以至少 1rem */
+.input,
+.select {
+  min-height: var(--tap);
+  width: 100%;
+  padding: 0.625rem 0.875rem;
+  border: 1.5px solid var(--c-gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--c-white);
+  font-size: var(--fs-title);
+}
+
+.input:focus,
+.select:focus {
+  border-color: var(--c-primary-500);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--c-primary-100);
+}
+
+.input-suffix {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-suffix .input {
+  max-width: 8rem;
+}
