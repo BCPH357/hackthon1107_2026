@@ -1,0 +1,4 @@
+# Flask：BSD-3-Clause
+Flask>=2.2,<4
+# gunicorn：MIT，Docker 裡的正式伺服器
+gunicorn>=22,<24
