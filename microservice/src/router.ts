@@ -1,9 +1,8 @@
 import { nextTick } from 'vue'
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { APP_NAME } from './config'
-import { findEvent, isSensitiveEvent } from './data/lifeEvents'
+import { findEvent } from './data/lifeEvents'
 import { findLink } from './stores/cases'
-import { lastEventId } from './stores/progress'
 import DisplaySettingsView from './views/DisplaySettingsView.vue'
 import EventView from './views/EventView.vue'
 import EventsView from './views/EventsView.vue'
@@ -100,18 +99,7 @@ export const router = createRouter({
   scrollBehavior: (_to, _from, savedPosition) => savedPosition ?? { top: 0 },
 })
 
-let isFirstNavigation = true
-
-router.beforeEach((to) => {
-  const first = isFirstNavigation
-  isFirstNavigation = false
-
-  // 再次從台北通進入時，直接回到上次的事件（計畫書「序幕」）
-  if (first && to.path === '/' && lastEventId.value && findEvent(lastEventId.value) && !isSensitiveEvent(lastEventId.value)) {
-    return `/events/${lastEventId.value}`
-  }
-  return true
-})
+// 從台北通進來一律先看到首頁；上次的事放在首頁的「繼續上次的事」，點一下就回去
 
 router.afterEach((to, from) => {
   if (to.meta.title) document.title = to.meta.title
