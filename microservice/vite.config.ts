@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import pkg from './package.json'
 
 // 從自己電腦對外（Cloudflare Tunnel 或 ngrok）時，Vite 會擋下不認得的網域；前面加點代表允許所有子網域。
 // 改用 Cloudflare 命名通道接自己的網域時，把網域加在這裡，例如 '.example.com'。
@@ -36,6 +37,8 @@ export default defineConfig(({ command, mode }) => {
   return {
     // 用相對路徑，打包後放在任何子路徑（Flask static、Firebase Hosting）都能開
     base: './',
+    // 版本號只寫在 package.json 的 version，打包時帶進網頁（src/config.ts 的 APP_VERSION）
+    define: { __APP_VERSION__: JSON.stringify(pkg.version) },
     plugins: [vue()],
     build: {
       // 由 scripts/clean-dist.mjs 清空 dist：Node 24.11 在含中文的 Windows 路徑上清空資料夾會崩潰

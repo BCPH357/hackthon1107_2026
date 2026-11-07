@@ -5,6 +5,7 @@ import AppIcon from './AppIcon.vue'
 import CityLink from './CityLink.vue'
 import DisplayButton from './DisplayButton.vue'
 import EasyReadToggle from './EasyReadToggle.vue'
+import { APP_VERSION } from '../config'
 import { isInApp } from '../services/townpass'
 
 const props = defineProps<{
@@ -55,6 +56,8 @@ function goBack() {
         <DisplayButton v-if="!hideDisplayButton" />
       </div>
       <slot />
+      <!-- 版本號：在頁面最下方靠左；內容不滿一頁時貼在畫面左下角，不蓋住任何內容 -->
+      <p class="page__version">版本 {{ APP_VERSION }}</p>
     </main>
 
     <!-- 隨時都能跳進城市地圖：有固定底部按鈕時貼在它上方，沒有時浮在右下角 -->
@@ -167,6 +170,18 @@ function goBack() {
 
 .page__main--with-city-link:has(+ .page__footer) {
   padding-bottom: 5rem;
+}
+
+.page__version {
+  margin-top: auto;
+  font-size: var(--fs-caption);
+  color: var(--c-gray-600);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 滿版頁面（城市地圖）沒有內距，版本號自己留左右空間 */
+.page__main--flush > .page__version {
+  padding: 0.5rem var(--gutter);
 }
 
 .page__main--flush {
