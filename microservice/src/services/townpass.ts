@@ -5,7 +5,7 @@
 
 import { showToast } from '../stores/toast'
 import type { TownPassService } from '../data/townpassServices'
-import { readJson, writeJson } from '../utils/storage'
+import { readSharedJson, writeSharedJson } from '../utils/storage'
 
 type MessageListener = (event: MessageEvent<string>) => void
 
@@ -211,7 +211,8 @@ export type BleHandoverReceiveResult =
   | { state: 'unavailable'; reason: BleUnavailableReason }
   | { state: 'error'; message?: string }
 
-// 一般瀏覽器沒有藍牙：把交棒票暫存在 localStorage，同一個瀏覽器的另一個分頁就能「接收」，方便用電腦測兩個角色
+// 一般瀏覽器沒有藍牙：把交棒票暫存在 localStorage（各角色共用的 key），同一個瀏覽器的另一個分頁就能「接收」。
+// 模擬子女的分頁要用 ?as=family 打開，兩個角色的其他資料才會分開存（見 utils/storage.ts）
 const MOCK_TICKET_KEY = 'life-events.mock-handover-ticket'
 
 /** 開始用藍牙傳送交棒票，回覆方式同 startBleShare；離開頁面時一定要呼叫 stop */
@@ -220,7 +221,7 @@ export function startBleHandoverShare(
   onEvent: (event: BleShareEvent) => void,
 ): { stop: () => void; mocked: boolean } {
   if (!isInApp()) {
-    writeJson(MOCK_TICKET_KEY, ticket)
+    writeSharedJson(MOCK_TICKET_KEY, ticket)
     const timers = [
       window.setTimeout(() => onEvent({ state: 'advertising', code: '4821' }), 300),
       window.setTimeout(() => onEvent({ state: 'sent' }), 6000),
@@ -242,7 +243,7 @@ export function startBleHandoverShare(
 export async function receiveBleHandover(): Promise<{ result: BleHandoverReceiveResult; mocked: boolean }> {
   if (!isInApp()) {
     await new Promise((resolve) => window.setTimeout(resolve, 1500))
-    const ticket = readJson<HandoverTicket | null>(MOCK_TICKET_KEY, null)
+    const ticket = readSharedJson<HandoverTicket | null>(MOCK_TICKET_KEY, null)
     return { result: ticket ? { state: 'found', code: '4821', data: ticket } : { state: 'notFound' }, mocked: true }
   }
   const result = await request<BleHandoverReceiveResult>('ble_receive', { kind: 'handover' }, 35000)

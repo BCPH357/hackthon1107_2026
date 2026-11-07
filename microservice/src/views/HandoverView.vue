@@ -169,7 +169,7 @@ onBeforeUnmount(stop)
       <p class="waiting__label">請家人在首頁按「接收家人交棒」，並核對這組代碼：</p>
       <p class="waiting__code" :aria-label="`代碼 ${status.code.split('').join(' ')}`">{{ status.code }}</p>
       <p class="muted">兩支手機靠近一點，畫面不要關掉。1 分鐘內有效。</p>
-      <p v-if="mocked" class="badge badge--draft">瀏覽器預覽・沒有真的開藍牙；在同一個瀏覽器的另一個分頁按「接收家人交棒」即可測試</p>
+      <p v-if="mocked" class="badge badge--draft">瀏覽器預覽・沒有真的開藍牙；在同一個瀏覽器另開分頁、網址加上 ?as=family，按「接收家人交棒」即可測試</p>
     </section>
 
     <section v-else-if="status.step === 'sent'" class="card stack waiting" role="status">

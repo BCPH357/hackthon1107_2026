@@ -55,8 +55,8 @@ export interface CaseLink {
 const CASES_KEY = 'life-events.cases.v1'
 const MARKS_KEY = 'life-events.handover-marks.v1'
 
-// 同一支手機可能同時是長輩（交出去）和子女（接收），用「角色:caseId」當 key 才不會互相覆蓋；
-// 在電腦瀏覽器用兩個分頁測試兩個角色時也靠這個
+// 同一支手機可能同時是長輩（交出去）和子女（接收），用「角色:caseId」當 key 才不會互相覆蓋。
+// 在電腦瀏覽器用兩個分頁測試兩個角色時，子女分頁要用 ?as=family 打開，否則整份寫回時會蓋掉長輩的案件（見 utils/storage.ts）
 export const caseLinks = reactive<Record<string, CaseLink>>(readJson(CASES_KEY, {}))
 watch(caseLinks, (value) => writeJson(CASES_KEY, value), { deep: true })
 
