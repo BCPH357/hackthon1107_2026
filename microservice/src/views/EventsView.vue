@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import EventIcon from '../components/EventIcon.vue'
 import EventRow from '../components/EventRow.vue'
 import HelpCard from '../components/HelpCard.vue'
 import PageLayout from '../components/PageLayout.vue'
@@ -41,7 +42,7 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
       <h2 id="recommended-title" class="section-title">{{ hasRecommendation ? '為你推薦' : '常見的事' }}</h2>
       <ul class="list card">
         <li v-for="event in shownEvents" :key="event.id">
-          <EventRow :event="event" :sub="event.summary ?? categoryOf(event.id)?.title" />
+          <EventRow :event="event" :sub="event.summary ?? categoryOf(event.id)?.title" with-icon />
         </li>
       </ul>
     </section>
@@ -51,6 +52,7 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
       <div class="categories card">
         <details v-for="category in CATEGORIES" :key="category.id" class="category">
           <summary class="category__summary">
+            <EventIcon :name="category.icon" />
             <span class="category__title">{{ category.title }}</span>
             <span class="muted category__count">{{ category.events.length }} 件事</span>
             <AppIcon name="chevron-down" class="category__chevron" />
@@ -156,8 +158,14 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
   background: var(--c-primary-50);
 }
 
+/* 展開時底色變淡藍，圖示底改白色，跟 TownPass 服務頁的白色圓底一致 */
+.category[open] .category__summary .event-icon {
+  background: var(--c-white);
+}
+
+/* 類別底下的事件不重複放圖示，文字對齊類別名稱：圖示 2.75rem + 間距 0.75rem */
 .category__list {
   border-top: 1px solid var(--c-gray-100);
-  padding-left: 0.5rem;
+  padding-left: 3.5rem;
 }
 </style>

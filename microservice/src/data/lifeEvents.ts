@@ -1,6 +1,7 @@
 // 人生事件與步驟，依計畫書「人生事件清單」「事件流程範例」兩節。
 // 內容是劇情草稿，尚未逐條對照官方資料，畫面上一律顯示 DATA_NOTICE。
 
+import type { IconKey } from './icons'
 import type { CategoryDef, EventDef, ProfileKey, ResourceDef, StepDef } from './types'
 
 const LTC_HOTLINE: ResourceDef = {
@@ -408,22 +409,29 @@ const bereavementSteps: StepDef[] = [
 
 // ── 類別與事件 ──────────────────────────────────────────
 
-const pending = (id: string, title: string, recommendFor: ProfileKey[] = []): EventDef => ({ id, title, recommendFor })
+const pending = (id: string, title: string, recommendFor: ProfileKey[] = [], icon?: IconKey): EventDef => ({
+  id,
+  title,
+  recommendFor,
+  icon,
+})
 
 export const CATEGORIES: CategoryDef[] = [
   {
     id: 'marriage-family',
     title: '婚姻與家庭',
+    icon: 'family',
     events: [
       pending('marriage', '結婚'),
-      pending('divorce', '離婚'),
+      pending('divorce', '離婚', [], 'document'),
       pending('adoption', '收養'),
-      pending('domestic-violence', '家暴求助'),
+      pending('domestic-violence', '家暴求助', [], 'protectionHotline'),
     ],
   },
   {
     id: 'pregnancy-parenting',
     title: '懷孕與育兒',
+    icon: 'stroller',
     events: [
       {
         id: 'pregnancy',
@@ -433,14 +441,15 @@ export const CATEGORIES: CategoryDef[] = [
         recommendFor: ['pregnant'],
         steps: pregnancySteps,
       },
-      pending('birth-allowance', '出生登記與育兒津貼', ['pregnant', 'childcare']),
-      pending('childcare', '托育與親子活動', ['childcare']),
+      pending('birth-allowance', '出生登記與育兒津貼', ['pregnant', 'childcare'], 'money'),
+      pending('childcare', '托育與親子活動', ['childcare'], 'family'),
       pending('early-intervention', '發展遲緩與早期療育', ['childcare']),
     ],
   },
   {
     id: 'disability',
     title: '身心障礙',
+    icon: 'wheelchair',
     events: [
       {
         id: 'disability-certificate',
@@ -448,18 +457,20 @@ export const CATEGORIES: CategoryDef[] = [
         summary: '從區公所申請、醫院鑑定到申請福利',
         intro: '從區公所申請到領到證明，再到申請需要的福利。',
         recommendFor: ['disability', 'careDisabled'],
+        icon: 'idCard',
         steps: disabilitySteps,
       },
-      pending('recertification', '證明到期重新鑑定', ['disability']),
+      pending('recertification', '證明到期重新鑑定', ['disability'], 'calendar'),
       pending('assistive-devices', '申請輔具', ['mobility', 'disability', 'injured']),
-      pending('parking-permit', '身障停車證', ['mobility']),
+      pending('parking-permit', '身障停車證', ['mobility'], 'parking'),
       pending('accessible-transport', '無障礙交通與復康巴士', ['mobility', 'disability']),
-      pending('sign-language', '手語翻譯與同步聽打', ['hearing']),
+      pending('sign-language', '手語翻譯與同步聽打', ['hearing'], 'talk'),
     ],
   },
   {
     id: 'elder-care',
     title: '高齡與長照',
+    icon: 'elder',
     events: [
       {
         id: 'dementia',
@@ -475,16 +486,18 @@ export const CATEGORIES: CategoryDef[] = [
         summary: '從撥打 1966 到開始使用服務',
         intro: '打一通電話開始，評估後就能使用居家、日照、接送等服務。',
         recommendFor: ['elder', 'careElder', 'dementia'],
+        icon: 'careHeart',
         steps: dementiaSteps.slice(1),
       },
-      pending('foreign-caregiver', '申請外籍看護', ['careElder', 'careDisabled']),
-      pending('senior-card', '申請敬老卡', ['elder']),
-      pending('living-alone-safety', '獨居長者安全', ['livingAlone']),
+      pending('foreign-caregiver', '申請外籍看護', ['careElder', 'careDisabled'], 'person'),
+      pending('senior-card', '申請敬老卡', ['elder'], 'card'),
+      pending('living-alone-safety', '獨居長者安全', ['livingAlone'], 'shield'),
     ],
   },
   {
     id: 'health',
     title: '傷病與醫療',
+    icon: 'hospital',
     events: [
       pending('emergency-care', '突發傷病就醫', ['injured']),
       {
@@ -493,45 +506,50 @@ export const CATEGORIES: CategoryDef[] = [
         summary: '輔具、回診交通、請假與給付',
         intro: '從醫院回到家，先把照顧、輔具與交通安排好。',
         recommendFor: ['injured', 'carePatient'],
+        icon: 'home',
         steps: dischargeSteps,
       },
-      pending('catastrophic-illness', '申請重大傷病', ['majorIllness']),
-      pending('mental-health', '心理健康支持', ['mental', 'caregiver']),
+      pending('catastrophic-illness', '申請重大傷病', ['majorIllness'], 'idCard'),
+      pending('mental-health', '心理健康支持', ['mental', 'caregiver'], 'talk'),
     ],
   },
   {
     id: 'caregiver',
     title: '照顧者支持',
+    icon: 'careHeart',
     events: [
       pending('respite', '喘息服務', ['caregiver']),
-      pending('care-and-work', '照顧與工作兼顧', ['caregiver']),
-      pending('care-skills', '照顧技巧與支持團體', ['caregiver']),
+      pending('care-and-work', '照顧與工作兼顧', ['caregiver'], 'calendar'),
+      pending('care-skills', '照顧技巧與支持團體', ['caregiver'], 'group'),
     ],
   },
   {
     id: 'work-economy',
     title: '就業與經濟',
+    icon: 'briefcase',
     events: [
       pending('job-seeking', '求職', ['jobSeeking']),
       pending('disability-employment', '身障者就業', ['disability']),
       pending('unemployment', '失業', ['jobSeeking']),
-      pending('emergency-aid', '急難救助', ['lowIncome']),
-      pending('low-income', '申請低收入戶', ['lowIncome']),
+      pending('emergency-aid', '急難救助', ['lowIncome'], 'wallet'),
+      pending('low-income', '申請低收入戶', ['lowIncome'], 'money'),
     ],
   },
   {
     id: 'housing',
     title: '居住',
+    icon: 'house',
     events: [
-      pending('moving', '搬家與遷入戶籍'),
-      pending('rent-subsidy', '租屋補貼', ['lowIncome']),
-      pending('social-housing', '申請社會住宅', ['lowIncome']),
+      pending('moving', '搬家與遷入戶籍', [], 'home'),
+      pending('rent-subsidy', '租屋補貼', ['lowIncome'], 'wallet'),
+      pending('social-housing', '申請社會住宅', ['lowIncome'], 'publicHousing'),
       pending('home-accessibility', '住家無障礙改善', ['mobility', 'elder']),
     ],
   },
   {
     id: 'after-death',
     title: '身後事',
+    icon: 'lotus',
     events: [
       {
         id: 'bereavement',
@@ -541,7 +559,7 @@ export const CATEGORIES: CategoryDef[] = [
         recommendFor: [],
         steps: bereavementSteps,
       },
-      pending('inheritance', '遺產繼承'),
+      pending('inheritance', '遺產繼承', [], 'document'),
     ],
   },
 ]
@@ -557,6 +575,11 @@ export function findEvent(eventId: string): EventDef | undefined {
 
 export function categoryOf(eventId: string): CategoryDef | undefined {
   return CATEGORIES.find((category) => category.events.some((event) => event.id === eventId))
+}
+
+/** 事件的圖示，沒有指定時沿用所屬類別的圖示 */
+export function iconOf(event: EventDef): IconKey {
+  return event.icon ?? categoryOf(event.id)?.icon ?? 'document'
 }
 
 // 使用者親自勾選的具體處境（懷孕、記憶困難、照顧家人…）比推導出的大分類更能代表需求

@@ -1,3 +1,4 @@
+import type { IconKey } from './icons'
 import type { TownPassServiceId } from './townpassServices'
 
 /** 由使用者身分推導出的特徵，用來推薦事件、標示「你可能符合」 */
@@ -72,6 +73,8 @@ export interface EventDef {
   summary?: string
   intro?: string
   recommendFor: ProfileKey[]
+  /** 沒有指定時沿用類別的圖示 */
+  icon?: IconKey
   /** 沒有步驟代表內容建置中 */
   steps?: StepDef[]
 }
@@ -79,5 +82,6 @@ export interface EventDef {
 export interface CategoryDef {
   id: string
   title: string
+  icon: IconKey
   events: EventDef[]
 }

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from './AppIcon.vue'
+import EventIcon from './EventIcon.vue'
+import { iconOf } from '../data/lifeEvents'
 import type { EventDef } from '../data/types'
 import { doneCount } from '../stores/progress'
 
-const props = defineProps<{ event: EventDef; sub?: string }>()
+const props = defineProps<{ event: EventDef; sub?: string; withIcon?: boolean }>()
 
 const total = computed(() => props.event.steps?.length ?? 0)
 const done = computed(() => doneCount(props.event.id, props.event.steps))
@@ -12,6 +14,7 @@ const done = computed(() => doneCount(props.event.id, props.event.steps))
 
 <template>
   <RouterLink :to="`/events/${event.id}`" class="event-row">
+    <EventIcon v-if="withIcon" :name="iconOf(event)" />
     <span class="event-row__text">
       <span class="event-row__title">{{ event.title }}</span>
       <span v-if="sub" class="event-row__sub">{{ sub }}</span>
