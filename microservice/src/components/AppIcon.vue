@@ -23,6 +23,8 @@ export type IconName =
   | 'recenter'
   | 'city'
   | 'close'
+  | 'navigation'
+  | 'camera'
 
 withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' })
 </script>
@@ -105,5 +107,10 @@ withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' 
       <path d="M13.5 8.5h2M13.5 12.5h2M13.5 16.5h2" />
     </template>
     <path v-else-if="name === 'close'" d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+    <path v-else-if="name === 'navigation'" d="M12 3l7 17.5-7-4-7 4z" />
+    <template v-else-if="name === 'camera'">
+      <path d="M3.5 8.5h3.5l2-3h6l2 3h3.5v11h-17z" />
+      <circle cx="12" cy="13.5" r="3.5" />
+    </template>
   </svg>
 </template>

@@ -1,0 +1,332 @@
+{
+  "fetchedAt": "2026-11-07",
+  "license": "政府資料開放授權條款－第1版",
+  "sources": {
+    "toilets": {
+      "title": "臺北市公廁點位資訊",
+      "url": "https://data.taipei/dataset/detail?id=ca205b54-a06f-4d84-894c-d6ab5079ce79"
+    },
+    "household": {
+      "title": "臺北市各區戶政事務所等候人數",
+      "url": "https://data.taipei/dataset/detail?id=3b9856c9-d26b-4089-95ad-bc4c5908461e"
+    }
+  },
+  "places": [
+    {
+      "id": "district-office-中正區",
+      "type": "districtOffice",
+      "name": "中正區公所",
+      "district": "中正區",
+      "address": "臺北市中正區羅斯福路1段8號6、7樓",
+      "lat": 25.032626,
+      "lng": 121.517992,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-大同區",
+      "type": "districtOffice",
+      "name": "大同區公所",
+      "district": "大同區",
+      "address": "臺北市大同區昌吉街57號4樓",
+      "lat": 25.066028,
+      "lng": 121.515458,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-中山區",
+      "type": "districtOffice",
+      "name": "中山區公所",
+      "district": "中山區",
+      "address": "臺北市中山區松江路367號",
+      "lat": 25.064455,
+      "lng": 121.533556,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-松山區",
+      "type": "districtOffice",
+      "name": "松山區公所",
+      "district": "松山區",
+      "address": "臺北市松山區八德路四段692號7樓",
+      "lat": 25.049907,
+      "lng": 121.57726,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-大安區",
+      "type": "districtOffice",
+      "name": "大安區公所",
+      "district": "大安區",
+      "address": "臺北市大安區新生南路二段86號",
+      "lat": 25.026441,
+      "lng": 121.534607,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-萬華區",
+      "type": "districtOffice",
+      "name": "萬華區公所",
+      "district": "萬華區",
+      "address": "臺北市萬華區和平西路三段120號10樓",
+      "lat": 25.034816,
+      "lng": 121.499739,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-信義區",
+      "type": "districtOffice",
+      "name": "信義區公所",
+      "district": "信義區",
+      "address": "臺北市信義區福德街86號9樓",
+      "lat": 25.037725,
+      "lng": 121.581973,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-士林區",
+      "type": "districtOffice",
+      "name": "士林區公所",
+      "district": "士林區",
+      "address": "臺北市士林區中正路439號",
+      "lat": 25.092808,
+      "lng": 121.51967,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-內湖區",
+      "type": "districtOffice",
+      "name": "內湖區公所",
+      "district": "內湖區",
+      "address": "臺北市內湖區民權東路六段99號4F",
+      "lat": 25.069374,
+      "lng": 121.588898,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-南港區",
+      "type": "districtOffice",
+      "name": "南港區公所",
+      "district": "南港區",
+      "address": "臺北市南港區南港路一段360號",
+      "lat": 25.054509,
+      "lng": 121.606697,
+      "source": "toilets"
+    },
+    {
+      "id": "district-office-文山區",
+      "type": "districtOffice",
+      "name": "文山區公所",
+      "district": "文山區",
+      "address": "臺北市文山區木柵路三段220號9樓",
+      "lat": 24.989558,
+      "lng": 121.569962,
+      "source": "toilets"
+    },
+    {
+      "id": "household-松山區",
+      "type": "household",
+      "name": "松山區戶政事務所",
+      "district": "松山區",
+      "address": "臺北市松山區八德路4段692號4樓",
+      "phone": "(02)27533043",
+      "lat": 25.049822,
+      "lng": 121.577229,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-信義區",
+      "type": "household",
+      "name": "信義區戶政事務所",
+      "district": "信義區",
+      "address": "臺北市信義區福德街86號6樓",
+      "phone": "(02)27233977",
+      "lat": 25.037725,
+      "lng": 121.581973,
+      "source": "toilets(同棟建物)+household"
+    },
+    {
+      "id": "household-大安區",
+      "type": "household",
+      "name": "大安區戶政事務所",
+      "district": "大安區",
+      "address": "臺北市大安區新生南路2段86號1樓",
+      "phone": "(02)23587877",
+      "lat": 25.026441,
+      "lng": 121.534607,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-中山區",
+      "type": "household",
+      "name": "中山區戶政事務所",
+      "district": "中山區",
+      "address": "臺北市中山區松江路367號2樓",
+      "phone": "(02)25032461",
+      "lat": 25.064455,
+      "lng": 121.533556,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-中正區",
+      "type": "household",
+      "name": "中正區戶政事務所",
+      "district": "中正區",
+      "address": "臺北市中正區羅斯福路1段8號5樓",
+      "phone": "(02)23948838",
+      "lat": 25.032747,
+      "lng": 121.518099,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-大同區",
+      "type": "household",
+      "name": "大同區戶政事務所",
+      "district": "大同區",
+      "address": "臺北市大同區昌吉街57號3樓之1",
+      "phone": "(02)25942569",
+      "lat": 25.066028,
+      "lng": 121.515458,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-萬華區",
+      "type": "household",
+      "name": "萬華區戶政事務所",
+      "district": "萬華區",
+      "address": "臺北市萬華區和平西路3段120號4樓",
+      "phone": "(02)23062706",
+      "lat": 25.034816,
+      "lng": 121.499739,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-文山區",
+      "type": "household",
+      "name": "文山區戶政事務所",
+      "district": "文山區",
+      "address": "臺北市文山區木柵路3段220號2樓",
+      "phone": "(02)29395885",
+      "lat": 24.989558,
+      "lng": 121.569962,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-南港區",
+      "type": "household",
+      "name": "南港區戶政事務所",
+      "district": "南港區",
+      "address": "臺北市南港區南港路1段360號4樓",
+      "phone": "(02)27825196",
+      "lat": 25.054509,
+      "lng": 121.606697,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-內湖區",
+      "type": "household",
+      "name": "內湖區戶政事務所",
+      "district": "內湖區",
+      "address": "臺北市內湖區民權東路6段99號3樓",
+      "phone": "(02)27912277",
+      "lat": 25.069374,
+      "lng": 121.588898,
+      "source": "toilets+household"
+    },
+    {
+      "id": "household-士林區",
+      "type": "household",
+      "name": "士林區戶政事務所",
+      "district": "士林區",
+      "address": "臺北市士林區中正路439號3樓",
+      "phone": "(02)28803252",
+      "lat": 25.092808,
+      "lng": 121.51967,
+      "source": "toilets+household"
+    },
+    {
+      "id": "hospital-22",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院陽明院區",
+      "district": "士林區",
+      "address": "臺北市士林區雨聲街105號",
+      "lat": 25.105287,
+      "lng": 121.53175,
+      "source": "toilets"
+    },
+    {
+      "id": "hospital-23",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院中興院區",
+      "district": "大同區",
+      "address": "臺北市大同區鄭州路145號",
+      "lat": 25.050911,
+      "lng": 121.50919,
+      "source": "toilets"
+    },
+    {
+      "id": "hospital-24",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院仁愛院區",
+      "district": "大安區",
+      "address": "臺北市大安區仁愛路四段10號",
+      "lat": 25.037512,
+      "lng": 121.545224,
+      "source": "toilets"
+    },
+    {
+      "id": "hospital-25",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院和平婦幼院區（和平）",
+      "district": "中正區",
+      "address": "臺北市中正區廣州街14號",
+      "lat": 25.035528,
+      "lng": 121.506879,
+      "source": "toilets"
+    },
+    {
+      "id": "hospital-26",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院和平婦幼院區（婦幼）",
+      "district": "中正區",
+      "address": "臺北市中正區福州街12號",
+      "lat": 25.029086,
+      "lng": 121.519277,
+      "source": "toilets"
+    },
+    {
+      "id": "hospital-27",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院松德院區",
+      "district": "信義區",
+      "address": "臺北市信義區松德路309號",
+      "lat": 25.029966,
+      "lng": 121.575005,
+      "source": "toilets"
+    },
+    {
+      "id": "hospital-28",
+      "type": "hospital",
+      "name": "臺北市立聯合醫院忠孝院區",
+      "district": "南港區",
+      "address": "臺北市南港區同德路87號",
+      "lat": 25.046249,
+      "lng": 121.586098,
+      "source": "toilets"
+    }
+  ],
+  "missing": [
+    {
+      "type": "districtOffice",
+      "district": "北投區",
+      "name": "北投區公所",
+      "reason": "開放資料中沒有這個區公所的座標"
+    },
+    {
+      "type": "household",
+      "district": "北投區",
+      "name": "北投區戶政事務所",
+      "address": "臺北市北投區立功街9號11樓之3",
+      "reason": "開放資料中沒有這棟建物的座標"
+    }
+  ]
+}

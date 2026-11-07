@@ -90,6 +90,40 @@ export async function getUserInfo(): Promise<{ account: TownPassAccount | null; 
   return { account: data, mocked: false }
 }
 
+export interface DevicePosition {
+  lat: number
+  lng: number
+  /** 定位誤差半徑（公尺），不知道時為 null */
+  accuracy: number | null
+}
+
+/** App 的 location 回傳 geolocator 的 Position.toJson()，只列出用到的欄位；取不到時回傳空陣列 */
+interface AppPosition {
+  latitude?: number
+  longitude?: number
+  accuracy?: number
+}
+
+/**
+ * 取得目前位置。在台北通裡用 App 的 location（第一次會跳出系統的定位權限詢問，所以等久一點），
+ * 一般瀏覽器用 navigator.geolocation。取不到位置回傳 null，由畫面決定怎麼退場。
+ */
+export async function getCurrentPosition(timeoutMs = 15000): Promise<DevicePosition | null> {
+  if (isInApp()) {
+    const data = await request<AppPosition | unknown[]>('location', null, timeoutMs)
+    if (!data || Array.isArray(data) || typeof data.latitude !== 'number' || typeof data.longitude !== 'number') return null
+    return { lat: data.latitude, lng: data.longitude, accuracy: typeof data.accuracy === 'number' ? data.accuracy : null }
+  }
+  if (typeof navigator === 'undefined' || !navigator.geolocation) return null
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      ({ coords }) => resolve({ lat: coords.latitude, lng: coords.longitude, accuracy: coords.accuracy }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: timeoutMs, maximumAge: 5000 },
+    )
+  })
+}
+
 export function callPhone(number: string): void {
   if (isInApp()) post('phone_call', number)
   else showToast(`瀏覽器預覽：在台北通中會撥打 ${number}`)
@@ -104,6 +138,14 @@ export function openLink(url: string): void {
 /** 地圖只用 OpenStreetMap（比賽規則） */
 export function openMapSearch(query: string): void {
   openLink(`https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`)
+}
+
+/** OpenStreetMap 的步行路線規劃（OSRM 步行引擎） */
+export function openWalkingDirections(from: { lat: number; lng: number }, to: { lat: number; lng: number }): void {
+  const point = ({ lat, lng }: { lat: number; lng: number }) => `${lat.toFixed(6)},${lng.toFixed(6)}`
+  openLink(
+    `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${encodeURIComponent(`${point(from)};${point(to)}`)}`,
+  )
 }
 
 export function openTownPassService(service: TownPassService): void {

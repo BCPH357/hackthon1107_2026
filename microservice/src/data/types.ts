@@ -1,4 +1,5 @@
 import type { IconKey } from './icons'
+import type { PlaceType } from './places'
 import type { TownPassServiceId } from './townpassServices'
 
 /** 由使用者身分推導出的特徵，用來推薦事件、標示「你可能符合」 */
@@ -53,6 +54,8 @@ export interface WhereDef {
   /** 知道使用者行政區時改用這組，{district} 會換成「中山區」等 */
   districtName?: string
   districtMapQuery?: string
+  /** 有開放資料座標的地點類型：步驟頁會出現「用 AR 找方向」（src/data/places.ts） */
+  placeType?: PlaceType
 }
 
 /**

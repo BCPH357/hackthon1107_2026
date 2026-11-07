@@ -50,6 +50,20 @@ const routes: RouteRecordRaw[] = [
       return event.steps?.some((step) => step.id === to.params.stepId) ? true : `/events/${event.id}`
     },
   },
+  {
+    // AR 方向指引要開相機與感測器，只有用到的人才下載
+    path: '/events/:eventId/steps/:stepId/ar',
+    component: () => import('./views/ArDirectionView.vue'),
+    props: true,
+    meta: { title: '用 AR 找方向' },
+    beforeEnter: (to) => {
+      const event = findEvent(String(to.params.eventId))
+      if (!event) return '/events'
+      const step = event.steps?.find((s) => s.id === to.params.stepId)
+      if (!step) return `/events/${event.id}`
+      return step.where.placeType ? true : `/events/${event.id}/steps/${step.id}`
+    },
+  },
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ]
 

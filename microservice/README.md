@@ -63,7 +63,8 @@ fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
 | --- | --- |
 | `userinfo` | 幫自己辦時，帶入年齡、是否設籍臺北、居住行政區、是否為原住民 |
 | `phone_call` | 撥打 1999、1966 等專線 |
-| `open_link` | 開啟台北通內的其他服務，以及 OpenStreetMap 地圖搜尋 |
+| `open_link` | 開啟台北通內的其他服務、OpenStreetMap 地圖搜尋與步行路線、資料來源網頁 |
+| `location` | AR 方向指引取得目前位置（使用中每 5 秒更新一次）；一般瀏覽器改用 `navigator.geolocation` |
 
 ## 無障礙
 
@@ -80,6 +81,11 @@ fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
 - 人生事件、步驟與資源在 `src/data/lifeEvents.ts`，目前是**劇情草稿，尚未逐條對照官方資料**，畫面上已標示「示範內容」。
 - 易讀版文字在 `src/data/easyRead.ts`，**開發時由 AI（Claude）起草的固定文字**，執行時不呼叫任何 AI。尚待團隊逐條審稿，最好請長者或理解有困難的人實際讀一次。
 - 台北通服務清單在 `src/data/townpassServices.ts`，對應 TownPass 的 `my_service_model.dart`。網址為空的服務在 App 中也尚未開放，畫面會標示「尚未開放」。
+- 「去哪裡辦」AR 方向指引的地點在 `src/data/places.json`，**全部來自臺北資料大平台**，授權為政府資料開放授權條款－第1版：
+  - [臺北市公廁點位資訊](https://data.taipei/dataset/detail?id=ca205b54-a06f-4d84-894c-d6ab5079ce79)：區公所、戶政事務所、聯醫院區的經緯度。公廁以所在建物登記，所以用機關建物內公廁的座標代表機關位置。
+  - [臺北市各區戶政事務所等候人數](https://data.taipei/dataset/detail?id=3b9856c9-d26b-4089-95ad-bc4c5908461e)：戶政事務所的正式名稱、地址與電話。戶政事務所沒有自己的公廁紀錄時，用同一棟建物（地址相同、不看樓層）的座標。
+  - 目前有 11 個區公所、11 個戶政事務所、7 個聯醫院區（不含中醫、門診部與昆明院區）。北投區公所與北投區戶政事務所在開放資料裡找不到座標，程式不猜，畫面會說明並提供地圖搜尋。
+  - 更新資料：在 `microservice/` 執行 `node scripts/fetch-places.mjs`，會重新下載並覆寫 `places.json`，印出各類數量與缺座標的地點。網頁執行時不連 data.taipei，比賽現場網路不穩也能用。
 - 使用者填的身分與進度只存在手機的 localStorage，不會上傳。
 - 地圖只連到 OpenStreetMap。
 
@@ -123,6 +129,45 @@ fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
 主角大樓與住宅的牆面、招牌、屋頂會依主題重畫顏色（`src/city/textures.ts`），車輛與路燈保留原色。`models/Textures/colormap.png` 是套件附的 `variation-a.png` 改名而來。要換模型時，請挑淺色外牆的款式：`building-h` 這類外牆是固定的深灰磚，換不了色。
 
 Three.js 打包成獨立的檔案（壓縮後約 170 KB），只有打開城市地圖時才會下載。
+
+## AR 方向指引
+
+步驟的「去哪裡辦」是區公所、戶政事務所或聯醫院區時（`WhereDef.placeType`），會出現「用 AR 找方向」，打開 `#/events/<事件>/steps/<步驟>/ar`。目前有六個步驟：失智症就醫確認、身障證明申請／醫院鑑定／領取證明、出生登記、死亡登記。
+
+- **怎麼用**：手機直拿，相機畫面上的大箭頭指向目的地，距離顯示在上方；慢慢轉身，對準到正負 12 度內箭頭變綠色、寫「就在前方」，目的地落在鏡頭範圍內時畫面上會浮出名稱標記。Android 對準時會短震一下。
+- **不看畫面也能用**：方向同時寫成句子，例如「大安區公所在你的右前方，大約 2 點鐘方向，直線距離約 600 公尺」。方向或距離（每 100 公尺）改變時由讀屏主動念出，至少間隔 3 秒；也可以按「念出方向」。
+- **去哪一個**：區公所預設去戶籍地那一區（身障證明要在戶籍地申請），戶政事務所與聯醫院區預設去最近的，都可以用「換一個地點」改。旁邊會標示「你的戶籍地」「離你最近」。
+- **箭頭是直線方向，不是路線**：畫面上提醒走路要抬頭看路；要看怎麼走，按「看走路路線」開 OpenStreetMap 的步行路線。
+- **退場**：
+
+  | 情況 | 畫面 |
+  | --- | --- |
+  | 不想開相機、相機權限被拒、手機不支援 | 改成指南針錶盤，北方標記跟著真實的北方轉 |
+  | 3 秒內收不到方向感測器的數值 | 說明沒有指南針（或權限被拒），改用「在你的東北方」這種東西南北說法 |
+  | iPhone 回報指南針誤差大於 25 度 | 提示在空中畫 8 字形校正 |
+  | 取不到位置 | 以臺北市政府當起點示範，標示「示範位置」 |
+  | 人不在臺北市 | 提示距離會很遠，可以改用示範位置 |
+  | 定位誤差大於 100 公尺 | 提示方向僅供參考 |
+  | 手機橫拿 | 請使用者直拿（iPhone 的指南針以直拿為準） |
+  | 一般瀏覽器沒有指南針 | 出現「模擬手機面向」滑桿，方便在電腦上開發與展示 |
+
+- **隱私**：相機畫面只顯示在手機上，不錄影、不上傳、不做影像辨識；切到背景或離開頁面時立即關閉相機。位置只用來算方向和距離，不儲存。
+- **程式**：`src/views/ArDirectionView.vue`（流程與文字）、`src/components/ArViewport.vue`（相機畫面與箭頭）、`src/services/compass.ts`（iPhone 用 `webkitCompassHeading`，Android 用 `deviceorientationabsolute` 依 W3C 算法換成手機背面的方位，並做平滑處理）、`src/services/camera.ts`、`src/utils/geo.ts`（距離、方位角、方向說法）、`src/data/places.ts`。整頁獨立打包，只有打開時才下載。
+
+台北通 App 端的配合（`lib/util/tp_web_view.dart`、`ios/Runner/Info.plist`）：
+
+- WebView 開啟 `allowsInlineMediaPlayback`，否則 iPhone 會把相機畫面切成全螢幕播放。
+- `onPermissionRequest` 只放行本服務網址（`townpass-life-events.pages.dev` 與它的預覽網址、`*.trycloudflare.com`、`localhost`）的相機與方向感測器，其他網站或麥克風一律拒絕，和原本沒設定時的行為相同。iPhone 第一次仍會跳出系統的相機權限詢問。
+- `NSCameraUsageDescription` 改成中文，說明掃 QR Code 與 AR 方向指引都會用到相機。
+- **Android 限制**：WebView 放行相機的前提是台北通本身已經有相機權限。App 目前只在掃 QR Code 時才向使用者要相機權限，還沒掃過的話，AR 畫面會說明並改用錶盤。
+
+實機測試要看的地方（Chrome 已用假相機、假定位、合成的感測器事件自動測過，下列只能在手機上確認）：
+
+1. 第一次按「開啟相機找方向」時，台北通若還沒有相機或定位權限，iOS 會跳出系統詢問（相機的說明文字是新改的中文）；網頁的相機與方向權限由 App 直接放行，不會再多跳詢問。相機畫面在頁面內播放，不是全螢幕。
+2. 站在戶外轉一圈，箭頭的方向與 OpenStreetMap 上目的地的方向一致；對準時變綠。
+3. 走 50 到 100 公尺，距離會跟著變。
+4. 切到別的 App 再回來，相機會重新開啟；離開頁面後相機指示燈熄滅。
+5. 開 VoiceOver，轉身時會念出新的方向。
 
 ## 第三方套件
 

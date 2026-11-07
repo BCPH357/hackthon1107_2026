@@ -18,3 +18,6 @@ paths:
 - 觸控目標至少 48×48px；文字放大到 200% 時版面不能破掉
 - 城市地圖（`src/city/`）的 Kenney 模型用調色盤貼圖，只有牆面、招牌（商業大樓）或屋頂（住宅）會依主題重畫；換模型時要挑淺色外牆的款式，外牆是固定深灰磚的（例如 `building-h`）換不了色。不同套件的模型要放在各自的資料夾，因為它們都指向同名的 `Textures/colormap.png`
 - 城市地圖的 Three.js 只能在 `CityView` 這條延遲載入的路由裡 import，否則會打包進主程式，所有頁面都變慢
+- AR 方向指引（`ArDirectionView`）的相機與方向感測器請求，必須在點擊事件裡同步送出（不能先 await 別的東西），否則 iPhone 直接拒絕；離開頁面或切到背景時一定要 `closeCamera`
+- `DeviceOrientationEvent.requestPermission` 回答「拒絕」不代表收不到數值（新版 Chrome 也有這個 API），一律先監聽，逾時沒數值才判定
+- 地點座標只能來自 `src/data/places.json`（`node scripts/fetch-places.mjs` 從臺北資料大平台產生），開放資料沒有的地點不要手動補座標，寫進 `missing` 由畫面說明

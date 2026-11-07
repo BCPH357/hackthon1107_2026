@@ -70,6 +70,7 @@ const services = computed(() =>
 )
 
 const eventPath = computed(() => `/events/${props.eventId}`)
+const stepPath = computed(() => `${eventPath.value}/steps/${props.stepId}`)
 
 function backToEvent() {
   // 從清單點進來就退回去，避免標題列的返回鍵又回到這一步
@@ -144,7 +145,7 @@ function undo() {
       </div>
       <p class="where__name">{{ whereName }}</p>
       <p v-if="where.detail && !easyStep" class="muted">{{ where.detail }}</p>
-      <div v-if="where.phone || where.mapQuery" class="actions">
+      <div v-if="where.phone || where.mapQuery || where.placeType" class="actions">
         <button v-if="where.phone" type="button" class="btn btn--secondary" @click="callPhone(where.phone)">
           <AppIcon name="phone" />
           撥打 {{ where.phone }}
@@ -152,6 +153,11 @@ function undo() {
         <button v-if="where.mapQuery" type="button" class="btn btn--secondary" @click="openMapSearch(where.mapQuery)">
           <AppIcon name="map-pin" />
           在地圖上搜尋
+        </button>
+        <!-- 有開放資料座標的地點：打開相機，用箭頭指出方向 -->
+        <button v-if="where.placeType" type="button" class="btn btn--secondary" @click="router.push(`${stepPath}/ar`)">
+          <AppIcon name="navigation" />
+          用 AR 找方向
         </button>
       </div>
     </section>

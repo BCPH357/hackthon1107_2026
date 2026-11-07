@@ -98,10 +98,34 @@ class TPWebView extends StatelessWidget {
           // should be deal individually (ask for user agreement)
           return GeolocationPermissionShowPromptResponse(origin: origin, allow: true, retain: true);
         },
+        // 「一步一步來」的 AR 方向指引要在頁面內顯示相機畫面；不開的話 iPhone 會把影片切成全螢幕播放
+        initialSettings: InAppWebViewSettings(allowsInlineMediaPlayback: true),
+        onPermissionRequest: (controller, request) async => PermissionResponse(
+          resources: request.resources,
+          action: _canUseArSensors(request) ? PermissionResponseAction.GRANT : PermissionResponseAction.DENY,
+        ),
         onCloseWindow: (_) => Get.back(),
       ),
     );
   }
+}
+
+/// 可以使用相機與方向感測器（AR 方向指引）的網站：「一步一步來」正式網址、Cloudflare Pages 每次部署的預覽網址，
+/// 以及開發用的快速通道。相機畫面只在手機上顯示、不會上傳；系統層的相機權限仍由 iOS / Android 另外詢問使用者。
+const Set<String> _arTrustedHosts = {'townpass-life-events.pages.dev', 'localhost'};
+const Set<String> _arTrustedHostSuffixes = {'.townpass-life-events.pages.dev', '.trycloudflare.com'};
+
+/// 網頁要求權限時，只放行上述網站的相機與方向感測器，其他網站或其他權限（麥克風等）一律拒絕，
+/// 和外掛沒有設定這個回呼時的預設行為相同。
+bool _canUseArSensors(PermissionRequest request) {
+  final String host = request.origin.host;
+  final bool trustedHost = _arTrustedHosts.contains(host) || _arTrustedHostSuffixes.any(host.endsWith);
+  final bool onlyArResources = request.resources.isNotEmpty &&
+      request.resources.every(
+        (resource) =>
+            resource == PermissionResourceType.CAMERA || resource == PermissionResourceType.DEVICE_ORIENTATION_AND_MOTION,
+      );
+  return trustedHost && onlyArResources;
 }
 
 class TPInAppWebView extends StatelessWidget {
