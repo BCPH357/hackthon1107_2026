@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
 import { findEvent } from '../data/lifeEvents'
-import { findLink, refreshCase, setFamilyStepDone, syncErrorMessage } from '../stores/cases'
+import { findLink, refreshCase, setFamilyStepDone, syncErrorMessage, type SyncError } from '../stores/cases'
 import { isEasyRead } from '../stores/display'
 import { showToast } from '../stores/toast'
 import { useDocumentTitle } from '../utils/documentTitle'
@@ -28,15 +29,26 @@ function isDone(stepId: string): boolean {
   return link.value.doc?.steps[stepId]?.done ?? false
 }
 
+const router = useRouter()
+
+/** 對方已經刪除這筆交棒：回到清單，清單打開時會同步並把它從這支手機拿掉 */
+async function leaveIfDeleted(error: SyncError | null): Promise<boolean> {
+  if (error?.kind !== 'notFound') return false
+  await router.replace('/family')
+  return true
+}
+
 async function refresh() {
   syncing.value = true
   const error = await refreshCase(link.value)
   syncing.value = false
+  if (await leaveIfDeleted(error)) return
   if (error) showToast(`沒有取得最新進度：${syncErrorMessage(error)}`)
 }
 
 async function toggleDone(stepId: string) {
   const error = await setFamilyStepDone(link.value, stepId, !isDone(stepId))
+  if (await leaveIfDeleted(error)) return
   if (error) showToast(`沒有同步給家人：${syncErrorMessage(error)}`)
 }
 

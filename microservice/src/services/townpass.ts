@@ -249,6 +249,11 @@ export type BleHandoverReceiveResult =
 // 模擬子女的分頁要用 ?as=family 打開，兩個角色的其他資料才會分開存（見 utils/storage.ts）
 const MOCK_TICKET_KEY = 'life-events.mock-handover-ticket'
 
+/** 清除瀏覽器預覽用的假交棒票（清除資料時一併清掉，避免家人分頁又收到舊的） */
+export function clearMockHandoverTicket(): void {
+  if (!isInApp()) writeSharedJson(MOCK_TICKET_KEY, null)
+}
+
 /** 開始用藍牙傳送交棒票，回覆方式同 startBleShare；離開頁面時一定要呼叫 stop */
 export function startBleHandoverShare(
   ticket: HandoverTicket,

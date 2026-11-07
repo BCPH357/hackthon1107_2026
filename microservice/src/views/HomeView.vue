@@ -1,16 +1,21 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onMounted } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import DisplayButton from '../components/DisplayButton.vue'
 import PageLayout from '../components/PageLayout.vue'
 import { APP_NAME } from '../config'
 import { findEvent } from '../data/lifeEvents'
 import { display } from '../stores/display'
-import { familyCases } from '../stores/cases'
+import { familyCases, refreshFamilyCases } from '../stores/cases'
 import { hasIdentity } from '../stores/identity'
 import { doneCount, lastEventId } from '../stores/progress'
 
 // 計畫書：先問「要怎麼用」再問「你是誰」，看不清楚的人才填得完後面的表單
+// 有收到家人的交棒時同步一次，家人已經刪除的就不再顯示
+onMounted(() => {
+  if (familyCases.value.length) void refreshFamilyCases()
+})
+
 const startPath = computed(() => (display.chosen ? '/identity/basic' : '/display?first=1'))
 
 const lastEvent = computed(() => (lastEventId.value ? findEvent(lastEventId.value) : undefined))

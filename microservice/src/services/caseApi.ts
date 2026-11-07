@@ -31,7 +31,7 @@ export interface CaseRecord<T> {
 
 const TIMEOUT_MS = 10000
 
-async function call<T>(method: 'GET' | 'PUT', path: string, token: string, body?: unknown): Promise<CaseApiResult<T>> {
+async function call<T>(method: 'GET' | 'PUT' | 'DELETE', path: string, token: string, body?: unknown): Promise<CaseApiResult<T>> {
   const controller = new AbortController()
   const timer = window.setTimeout(() => controller.abort(), TIMEOUT_MS)
   try {
@@ -48,7 +48,8 @@ async function call<T>(method: 'GET' | 'PUT', path: string, token: string, body?
       signal: controller.signal,
     })
     const json = (await response.json().catch(() => null)) as Record<string, unknown> | null
-    if (response.ok && json) return { ok: true, value: json as T }
+    // DELETE 成功回 204，沒有內容
+    if (response.ok) return { ok: true, value: (json ?? {}) as T }
     if (response.status === 409) return { ok: false, kind: 'conflict', version: Number(json?.version ?? 0) }
     if (response.status === 404) return { ok: false, kind: 'notFound' }
     if (response.status === 401 || response.status === 403) return { ok: false, kind: 'forbidden' }
@@ -67,6 +68,11 @@ export function putCase<T>(caseId: string, token: string, baseVersion: number, d
 
 export function getCase<T>(caseId: string, token: string): Promise<CaseApiResult<CaseRecord<T>>> {
   return call('GET', `cases/${encodeURIComponent(caseId)}`, token)
+}
+
+/** 刪除案件：清除自己手機上的資料時呼叫，另一方之後讀取會拿到 notFound */
+export function deleteCase(caseId: string, token: string): Promise<CaseApiResult<Record<string, never>>> {
+  return call('DELETE', `cases/${encodeURIComponent(caseId)}`, token)
 }
 
 /** 只取版本號，給輪詢用：有變動才下載整份 */

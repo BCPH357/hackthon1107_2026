@@ -7,8 +7,8 @@
 
 import { computed, reactive, watch } from 'vue'
 import type { StepDef } from '../data/types'
-import { getCase, putCase, type CaseApiError } from '../services/caseApi'
-import type { HandoverTicket } from '../services/townpass'
+import { deleteCase, getCase, putCase, type CaseApiError } from '../services/caseApi'
+import { clearMockHandoverTicket, type HandoverTicket } from '../services/townpass'
 import { readJson, writeJson } from '../utils/storage'
 import { isStepDone, setStepDone } from './progress'
 
@@ -73,6 +73,43 @@ export function findLink(role: CaseRole, caseId: string): CaseLink | undefined {
 }
 
 /** 長輩這件事的案件（一件事只有一個） */
+/** 忘掉這筆交棒（本機）：長輩的連同這件事的「交給家人」標記一起清掉 */
+export function forgetCase(link: CaseLink): void {
+  delete caseLinks[linkKey(link.role, link.caseId)]
+  if (link.role === 'elder') delete handoverMarks[link.eventId]
+}
+
+/**
+ * 清除個人資料時一併刪掉所有交棒紀錄：伺服器上的案件（對方手機下次同步會發現已刪除）與這支手機的兩種角色。
+ * 回傳沒能連上伺服器刪除的筆數（本機照樣清掉）。
+ */
+export async function deleteAllCases(): Promise<number> {
+  let failed = 0
+  for (const link of Object.values(caseLinks)) {
+    if (link.version === 0) continue
+    const result = await deleteCase(link.caseId, link.token)
+    // 已經不在（notFound）或權杖不對（forbidden）都當作刪掉了
+    if (!result.ok && result.kind !== 'notFound' && result.kind !== 'forbidden') failed += 1
+  }
+  for (const key of Object.keys(caseLinks)) delete caseLinks[key]
+  for (const key of Object.keys(handoverMarks)) delete handoverMarks[key]
+  clearMockHandoverTicket()
+  return failed
+}
+
+/** 子女：同步每一筆收到的交棒，對方已經刪除的就從清單拿掉。回傳拿掉的筆數 */
+export async function refreshFamilyCases(): Promise<number> {
+  let removed = 0
+  for (const link of Object.values(caseLinks).filter((item) => item.role === 'family')) {
+    const error = await refreshCase(link)
+    if (error?.kind === 'notFound') {
+      forgetCase(link)
+      removed += 1
+    }
+  }
+  return removed
+}
+
 export function elderCaseFor(eventId: string): CaseLink | undefined {
   return Object.values(caseLinks).find((link) => link.role === 'elder' && link.eventId === eventId)
 }
@@ -225,6 +262,18 @@ export async function handOver(
   elderName: string | null,
 ): Promise<{ link: CaseLink; error: SyncError | null }> {
   let link = elderCaseFor(eventId)
+  if (link && link.version > 0) {
+    // 先拿到家人最新的進度並同步到這支手機，免得蓋掉；家人已經刪除這筆交棒的話，重新建一筆
+    const error = await refreshCase(link)
+    if (error?.kind === 'notFound') {
+      forgetCase(link)
+      link = undefined
+    } else if (error) {
+      return { link, error }
+    } else {
+      applyDoneToProgress(link)
+    }
+  }
   if (!link) {
     const caseId = randomBase64Url(16)
     caseLinks[linkKey('elder', caseId)] = {
@@ -239,11 +288,6 @@ export async function handOver(
     }
     // 取回 reactive 版本，之後的修改才會存進 localStorage
     link = caseLinks[linkKey('elder', caseId)]
-  } else if (link.version > 0) {
-    // 先拿到家人最新的進度並同步到這支手機，免得蓋掉
-    const error = await refreshCase(link)
-    if (error) return { link, error }
-    applyDoneToProgress(link)
   }
   const error = await pushDoc(link, buildElderDoc(eventId, steps, link.doc, elderName))
   return { link, error }
@@ -254,6 +298,8 @@ export async function refreshElderCase(eventId: string): Promise<SyncError | nul
   const link = elderCaseFor(eventId)
   if (!link || link.version === 0) return null
   const error = await refreshCase(link)
+  // 家人已經刪除這筆交棒：這支手機的交棒紀錄與標記也一起清掉
+  if (error?.kind === 'notFound') forgetCase(link)
   // 只同步打勾；交棒標記不跟著伺服器改，長輩還沒交出去的標記才不會被蓋掉
   if (!error) applyDoneToProgress(link)
   return error
@@ -269,7 +315,10 @@ export async function pushElderProgress(eventId: string, steps: readonly StepDef
     const owner = link.doc.steps[stepId]?.owner
     if (owner && owner !== step.owner) doc.steps[stepId] = link.doc.steps[stepId]
   }
-  return pushDoc(link, doc)
+  const error = await pushDoc(link, doc)
+  // 家人已經刪除這筆交棒：這支手機的交棒紀錄與標記也一起清掉
+  if (error?.kind === 'notFound') forgetCase(link)
+  return error
 }
 
 // ---------------- 子女：接收交棒 ----------------
@@ -315,7 +364,7 @@ export function syncErrorMessage(error: SyncError): string {
     case 'network':
       return '連不上伺服器，請確認網路後再試一次。'
     case 'notFound':
-      return '伺服器上找不到這件事，可能伺服器重新啟動過。請長輩再交棒一次。'
+      return '這筆交棒已經刪除了（對方清除了資料，或伺服器重新啟動過），這支手機上的紀錄也一併拿掉'
     case 'forbidden':
       return '交棒資料不正確，請長輩再交棒一次。'
     case 'conflict':

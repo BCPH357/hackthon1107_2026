@@ -5,6 +5,7 @@ import AppIcon from '../components/AppIcon.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepIndicator from '../components/StepIndicator.vue'
 import { identity, identitySummary, identityTags, resetIdentity } from '../stores/identity'
+import { deleteAllCases } from '../stores/cases'
 import { clearProgress } from '../stores/progress'
 import { showToast } from '../stores/toast'
 
@@ -22,11 +23,17 @@ function confirm() {
   router.push('/events')
 }
 
-function clearAll() {
+async function clearAll() {
   resetIdentity()
   clearProgress()
   confirmingClear.value = false
-  showToast('已清除這支手機上的資料')
+  // 交棒紀錄一併刪除：伺服器上的案件刪掉後，家人手機下次同步也會跟著拿掉
+  const failed = await deleteAllCases()
+  showToast(
+    failed
+      ? `已清除這支手機上的資料；有 ${failed} 筆交棒沒連上伺服器，對方手機上可能還看得到`
+      : '已清除這支手機上的資料，交棒紀錄也一併刪除',
+  )
   router.replace('/')
 }
 </script>
@@ -65,7 +72,7 @@ function clearAll() {
         清除這支手機上我填的資料
       </button>
       <div v-else class="card clear__confirm" role="alert">
-        <p>確定要清除嗎？身分與每件事的進度都會一起清除。</p>
+        <p>確定要清除嗎？身分、每件事的進度和交棒紀錄都會一起清除，家人手機上的這些交棒也會一起刪掉。</p>
         <div class="clear__actions">
           <button type="button" class="btn btn--danger btn--sm" @click="clearAll">確定清除</button>
           <button type="button" class="btn btn--ghost btn--sm" @click="confirmingClear = false">取消</button>

@@ -1,10 +1,18 @@
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
 import PageLayout from '../components/PageLayout.vue'
 import { findEvent } from '../data/lifeEvents'
-import { familyCases, type CaseLink } from '../stores/cases'
+import { familyCases, refreshFamilyCases, type CaseLink } from '../stores/cases'
+import { showToast } from '../stores/toast'
 
 // 子女：家人交給我的事
+
+// 打開清單時同步一次：家人已經刪除的交棒（例如對方清除了資料）就從清單拿掉
+onMounted(async () => {
+  const removed = await refreshFamilyCases()
+  if (removed) showToast(`有 ${removed} 筆交棒已經被家人刪除，已從清單拿掉`)
+})
 
 function summaryOf(link: CaseLink): { mine: number; mineDone: number } {
   const steps = Object.values(link.doc?.steps ?? {}).filter((step) => step.owner === 'family')

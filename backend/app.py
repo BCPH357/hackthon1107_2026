@@ -9,6 +9,7 @@ API：
 - PUT /api/cases/<id>          body: {"baseVersion": int, "data": any}；版本不符回 409 並附上目前版本
 - GET /api/cases/<id>          回傳 {"version", "data", "updatedAt"}
 - GET /api/cases/<id>/version  回傳 {"version"}，給前端輪詢用
+- DELETE /api/cases/<id>       刪除案件（任一方清除自己的資料時呼叫），另一方之後讀取會拿到 404
 - GET /api/health              確認服務與通道是否通
 """
 
@@ -77,7 +78,7 @@ def _add_headers(response: Response) -> Response:
     if origin and origin in _allowed_origins:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Vary"] = "Origin"
-        response.headers["Access-Control-Allow-Methods"] = "GET, PUT, OPTIONS"
+        response.headers["Access-Control-Allow-Methods"] = "GET, PUT, DELETE, OPTIONS"
         response.headers["Access-Control-Allow-Headers"] = (
             "Authorization, Content-Type, ngrok-skip-browser-warning"
         )
@@ -171,6 +172,22 @@ def get_case_version(case_id: str):
         if denied is not None:
             return denied
         return jsonify({"version": case["version"]})
+
+
+@app.delete("/api/cases/<case_id>")
+def delete_case(case_id: str):
+    # 長輩或子女清除自己手機上的資料時，連同伺服器上的案件一起刪掉；要帶同一把權杖
+    if not CASE_ID_PATTERN.match(case_id):
+        return _error(400, "invalid_case_id")
+    with _lock:
+        case = _cases.get(case_id)
+        if case is None:
+            return _error(404, "not_found")
+        denied = _authorize(case)
+        if denied is not None:
+            return denied
+        del _cases[case_id]
+    return Response(status=204)
 
 
 @app.errorhandler(413)

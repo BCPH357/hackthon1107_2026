@@ -81,12 +81,12 @@ async function toggleDone(stepId: string) {
   // 打勾和取消都會同步給家人（以最後一次修改為準）
   setStepDone(event.value.id, stepId, !done)
   const error = await pushElderProgress(event.value.id, steps.value)
-  if (error) showToast(`進度沒有同步給家人：${syncErrorMessage(error)}`)
+  if (error) showToast(error.kind === 'notFound' ? syncErrorMessage(error) : `進度沒有同步給家人：${syncErrorMessage(error)}`)
 }
 
 onMounted(async () => {
   const error = await refreshElderCase(event.value.id)
-  if (error) showToast(`沒有取得家人的最新進度：${syncErrorMessage(error)}`)
+  if (error) showToast(error.kind === 'notFound' ? syncErrorMessage(error) : `沒有取得家人的最新進度：${syncErrorMessage(error)}`)
 })
 </script>
 
