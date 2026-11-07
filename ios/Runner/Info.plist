@@ -75,6 +75,8 @@
 			<key>LocationTemporaryUsageKey</key>
 			<string>TownPass 需要精確定位權限才可正常使用</string>
 		</dict>
+		<key>NSBluetoothAlwaysUsageDescription</key>
+		<string>TownPass 需要藍牙，才能在你同意後把年齡與戶籍資料傳給旁邊的家人，或接收家人傳來的資料</string>
 		<key>NSCameraUsageDescription</key>
         <string>This app needs camera access to scan QR codes</string>
         <key>NSPhotoLibraryUsageDescription</key>

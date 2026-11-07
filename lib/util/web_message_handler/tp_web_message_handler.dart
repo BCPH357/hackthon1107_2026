@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:get/get.dart';
 import 'package:town_pass/gen/assets.gen.dart';
 import 'package:town_pass/service/account_service.dart';
+import 'package:town_pass/service/ble_share_service.dart';
 import 'package:town_pass/service/device_service.dart';
 import 'package:town_pass/service/geo_locator_service.dart';
 import 'package:town_pass/service/notification_service.dart';
@@ -261,6 +262,58 @@ class NotifyMessageHandler extends TPWebMessageHandler {
         onReply?.call(replyWebMessage(data: false));
         return;
     }
+  }
+}
+
+/// 幫家人辦：開始用藍牙傳送自己的基本資料。
+/// 會回覆多次：advertising（附核對代碼）→ sent／timeout；失敗時回覆 unavailable／error。
+class BleShareStartMessageHandler extends TPWebMessageHandler {
+  @override
+  String get name => 'ble_share_start';
+
+  @override
+  Future<void> handle({
+    required Object? message,
+    required WebUri? sourceOrigin,
+    required bool isMainFrame,
+    required onReply,
+  }) async {
+    await BleShareService.instance.startShare(
+      (event) => onReply?.call(replyWebMessage(data: event)),
+    );
+  }
+}
+
+/// 幫家人辦：停止藍牙傳送（離開頁面或按「停止傳送」）
+class BleShareStopMessageHandler extends TPWebMessageHandler {
+  @override
+  String get name => 'ble_share_stop';
+
+  @override
+  Future<void> handle({
+    required Object? message,
+    required WebUri? sourceOrigin,
+    required bool isMainFrame,
+    required onReply,
+  }) async {
+    await BleShareService.instance.stopShare();
+  }
+}
+
+/// 幫家人辦：搜尋附近正在傳送的家人並讀取基本資料
+class BleReceiveMessageHandler extends TPWebMessageHandler {
+  @override
+  String get name => 'ble_receive';
+
+  @override
+  Future<void> handle({
+    required Object? message,
+    required WebUri? sourceOrigin,
+    required bool isMainFrame,
+    required onReply,
+  }) async {
+    final result = await BleShareService.instance.receive();
+    onReply?.call(replyWebMessage(data: result));
   }
 }
 

@@ -60,6 +60,16 @@ const HOW_IT_WORKS = [
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
 
+    <!-- 被幫的人（例如長輩）用這裡把資料用藍牙傳給旁邊的家人 -->
+    <RouterLink to="/share" class="continue card">
+      <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
+      <span class="continue__text">
+        <span class="continue__title">家人要幫你辦事？</span>
+        <span class="muted">用藍牙把你的年齡、戶籍傳給他</span>
+      </span>
+      <AppIcon name="chevron-right" size="1.5rem" />
+    </RouterLink>
+
     <p class="privacy muted">
       <AppIcon name="lock" />
       你填的資料只存在這支手機上，不會上傳。
@@ -173,6 +183,18 @@ const HOW_IT_WORKS = [
 .continue__title {
   font-size: var(--fs-title);
   font-weight: 600;
+}
+
+.share__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  background: var(--c-primary-100);
+  color: var(--c-primary-700);
 }
 
 .privacy {

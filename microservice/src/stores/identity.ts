@@ -34,8 +34,8 @@ const STORAGE_KEY = 'life-events.identity.v1'
 
 export interface Identity {
   forWhom: ForWhom | null
-  /** 基本資料來源：台北通帳號帶入，或使用者自己填 */
-  basicSource: 'account' | 'manual' | null
+  /** 基本資料來源：台北通帳號帶入、家人用藍牙傳來，或使用者自己填 */
+  basicSource: 'account' | 'bluetooth' | 'manual' | null
   basicConfirmed: boolean
   age: number | null
   taipeiResident: YesNo | null

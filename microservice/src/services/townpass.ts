@@ -101,6 +101,97 @@ export function openLink(url: string): void {
   else showToast(`瀏覽器預覽：在台北通中會開啟 ${url}`)
 }
 
+/** 持續接收同名的訊息（App 可能回覆多次），回傳取消監聽的函式 */
+function subscribe<T>(name: string, onData: (data: T) => void): () => void {
+  const bridge = window.flutterObject
+  if (!bridge) return () => {}
+  const onMessage: MessageListener = (event) => {
+    let reply: { name?: unknown; data?: unknown }
+    try {
+      reply = JSON.parse(event.data)
+    } catch {
+      return
+    }
+    if (reply.name === name) onData(reply.data as T)
+  }
+  bridge.addEventListener('message', onMessage)
+  return () => bridge.removeEventListener('message', onMessage)
+}
+
+// ---- 藍牙傳送基本資料（幫家人辦）----
+// 資料由 App 依白名單從台北通帳號組成，不含身分證字號、電話、地址與健康資料；
+// 只在兩支手機之間直接傳送，不經過任何伺服器。
+
+/** 藍牙傳送的內容，欄位與 lib/service/ble_share_service.dart 一致 */
+export interface SharedBasicInfo {
+  v: number
+  name?: string
+  age?: number | null
+  city?: string | null
+  town?: string | null
+  citizen?: boolean | null
+  native?: boolean | null
+}
+
+/** 藍牙不能用的原因 */
+export type BleUnavailableReason = 'off' | 'unauthorized' | 'unsupported' | 'noAccount'
+
+export type BleShareEvent =
+  | { state: 'advertising'; code: string }
+  | { state: 'sent' }
+  | { state: 'timeout' }
+  | { state: 'unavailable'; reason: BleUnavailableReason }
+  | { state: 'error'; message?: string }
+
+export type BleReceiveResult =
+  | { state: 'found'; code: string; data: SharedBasicInfo }
+  | { state: 'notFound' }
+  | { state: 'unavailable'; reason: BleUnavailableReason }
+  | { state: 'error'; message?: string }
+
+const MOCK_SHARED: SharedBasicInfo = {
+  v: 1,
+  name: '金大森',
+  age: 80,
+  city: '臺北市',
+  town: '中山區',
+  citizen: true,
+  native: false,
+}
+
+/**
+ * 開始用藍牙傳送自己的基本資料。App 會依序回覆：advertising（附核對代碼）→ sent／timeout。
+ * 回傳停止傳送的函式；離開頁面時一定要呼叫。
+ */
+export function startBleShare(onEvent: (event: BleShareEvent) => void): { stop: () => void; mocked: boolean } {
+  if (!isInApp()) {
+    const timers = [
+      window.setTimeout(() => onEvent({ state: 'advertising', code: '4821' }), 300),
+      window.setTimeout(() => onEvent({ state: 'sent' }), 6000),
+    ]
+    return { stop: () => timers.forEach((timer) => window.clearTimeout(timer)), mocked: true }
+  }
+  const unsubscribe = subscribe<BleShareEvent>('ble_share_start', onEvent)
+  post('ble_share_start', null)
+  return {
+    stop: () => {
+      unsubscribe()
+      post('ble_share_stop', null)
+    },
+    mocked: false,
+  }
+}
+
+/** 搜尋附近正在傳送的家人並讀取資料。App 端最多搜尋 20 秒，這裡多留一點時間給連線與讀取。 */
+export async function receiveBleShare(): Promise<{ result: BleReceiveResult; mocked: boolean }> {
+  if (!isInApp()) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1500))
+    return { result: { state: 'found', code: '4821', data: MOCK_SHARED }, mocked: true }
+  }
+  const result = await request<BleReceiveResult>('ble_receive', null, 35000)
+  return { result: result ?? { state: 'error', message: 'timeout' }, mocked: false }
+}
+
 /** 地圖只用 OpenStreetMap（比賽規則） */
 export function openMapSearch(query: string): void {
   openLink(`https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`)

@@ -18,6 +18,7 @@ export type IconName =
   | 'stop'
   | 'city'
   | 'close'
+  | 'bluetooth'
 
 withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' })
 </script>
@@ -85,5 +86,6 @@ withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' 
       <path d="M13.5 8.5h2M13.5 12.5h2M13.5 16.5h2" />
     </template>
     <path v-else-if="name === 'close'" d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+    <path v-else-if="name === 'bluetooth'" d="M6.5 7l11 10-5.5 4.5v-19L17.5 7l-11 10" />
   </svg>
 </template>

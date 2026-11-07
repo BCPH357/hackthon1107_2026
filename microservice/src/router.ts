@@ -13,6 +13,7 @@ import IdentityHealthView from './views/IdentityHealthView.vue'
 import IdentityLifeView from './views/IdentityLifeView.vue'
 import IdentitySummaryView from './views/IdentitySummaryView.vue'
 import IdentityWhoView from './views/IdentityWhoView.vue'
+import ShareView from './views/ShareView.vue'
 import StepView from './views/StepView.vue'
 
 declare module 'vue-router' {
@@ -31,6 +32,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/identity/health', component: IdentityHealthView, meta: { title: '你的情況', needsForWhom: true } },
   { path: '/identity/life', component: IdentityLifeView, meta: { title: '你的情況', needsForWhom: true } },
   { path: '/identity/summary', component: IdentitySummaryView, meta: { title: '你的情況', needsForWhom: true } },
+  { path: '/share', component: ShareView, meta: { title: '傳給家人' } },
   { path: '/events', component: EventsView, meta: { title: '要辦的事' } },
   // 城市地圖用到 Three.js（壓縮後約 150 KB），獨立打包：沒打開地圖的人不必下載
   { path: '/city', component: () => import('./views/CityView.vue'), meta: { title: '城市地圖' } },
