@@ -11,6 +11,8 @@ export default defineConfig({
   build: {
     // 由 scripts/clean-dist.mjs 清空 dist：Node 24.11 在含中文的 Windows 路徑上清空資料夾會崩潰
     emptyOutDir: false,
+    // 城市地圖的 Three.js 獨立成一包（約 650 KB，壓縮後 170 KB），只在打開地圖時下載
+    chunkSizeWarningLimit: 700,
   },
   server: {
     host: true,

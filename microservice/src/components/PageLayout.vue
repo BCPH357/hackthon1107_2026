@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
+import CityLink from './CityLink.vue'
 import { isInApp } from '../services/townpass'
 
 const props = defineProps<{
@@ -9,6 +10,10 @@ const props = defineProps<{
   title: string
   /** 沒有上一頁可回時，返回鍵改去這裡 */
   fallbackBack?: string
+  /** 內容滿版：不留內距、不限寬度（城市地圖用） */
+  flush?: boolean
+  /** 不顯示「城市地圖」浮動按鈕（城市地圖本身用） */
+  hideCityLink?: boolean
 }>()
 
 const route = useRoute()
@@ -37,15 +42,18 @@ function goBack() {
       <span class="preview-bar__title">{{ title }}</span>
     </header>
 
-    <main class="page__main">
+    <main class="page__main" :class="{ 'page__main--flush': flush, 'page__main--with-city-link': !hideCityLink }">
       <slot />
     </main>
 
+    <!-- 隨時都能跳進城市地圖：有固定底部按鈕時貼在它上方，沒有時浮在右下角 -->
     <footer v-if="$slots.footer" class="page__footer">
+      <CityLink v-if="!hideCityLink" class="page__city-link page__city-link--docked" />
       <div class="page__footer-inner">
         <slot name="footer" />
       </div>
     </footer>
+    <CityLink v-else-if="!hideCityLink" class="page__city-link page__city-link--floating" />
   </div>
 </template>
 
@@ -124,5 +132,36 @@ function goBack() {
 /* 有固定底部按鈕時，內容底部不必再留安全區域 */
 .page__main:has(+ .page__footer) {
   padding-bottom: 2rem;
+}
+
+/* 城市地圖按鈕會蓋住內容最底下，多留空間讓最後的內容能捲到按鈕上方 */
+.page__main--with-city-link {
+  padding-bottom: calc(5.5rem + var(--safe-bottom));
+}
+
+.page__main--with-city-link:has(+ .page__footer) {
+  padding-bottom: 5rem;
+}
+
+.page__main--flush {
+  max-width: none;
+  padding: 0;
+  gap: 0;
+}
+
+.page__city-link {
+  z-index: 6;
+}
+
+.page__city-link--docked {
+  position: absolute;
+  right: var(--gutter);
+  bottom: calc(100% + 0.75rem);
+}
+
+.page__city-link--floating {
+  position: fixed;
+  right: var(--gutter);
+  bottom: calc(1rem + var(--safe-bottom));
 }
 </style>
