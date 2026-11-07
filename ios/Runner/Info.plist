@@ -87,7 +87,7 @@
 		<key>NSBluetoothAlwaysUsageDescription</key>
 		<string>TownPass 需要藍牙，才能在你同意後把年齡與戶籍資料傳給旁邊的家人，或接收家人傳來的資料</string>
 		<key>NSCameraUsageDescription</key>
-        <string>TownPass 需要相機權限來掃描 QR Code，以及在「一步一步來」用 AR 顯示要去的地點方向；相機畫面只在手機上顯示，不會上傳</string>
+        <string>TownPass 需要相機權限來掃描 QR Code，以及在「一路相伴」用 AR 顯示要去的地點方向；相機畫面只在手機上顯示，不會上傳</string>
         <key>NSPhotoLibraryUsageDescription</key>
         <string>This app needs photos access to get QR code from photo library</string>
 		<key>UIStatusBarHidden</key>

@@ -6,7 +6,7 @@ abstract final class TrendingServiceModel {
   static List<TrendingService> get serviceList {
     return [
       TrendingService(
-        title: '一步一步來',
+        title: '一路相伴',
         icon: Assets.svg.iconLifeEvents.svg(),
         url: lifeEventsServiceUrl,
       ),

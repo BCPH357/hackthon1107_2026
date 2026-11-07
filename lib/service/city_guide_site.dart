@@ -15,7 +15,7 @@ class CityGuideSite {
 
   Future<Uri?> start() => _startup ??= _start();
 
-  /// 可以使用城市嚮導（裝置端 AI、語音）的網頁：隨 App 打包的離線版，或「一步一步來」的正式網址
+  /// 可以使用城市嚮導（裝置端 AI、語音）的網頁：隨 App 打包的離線版，或「一路相伴」的正式網址
   /// （預設是 Cloudflare Pages，建置時用 LIFE_EVENTS_URL 換網址的話跟著換）。其他網站一律不回應。
   bool trustsOrigin(Uri? source) {
     if (ownsOrigin(source)) return true;

@@ -5,7 +5,7 @@ import 'package:town_pass/util/tp_colors.dart';
 import 'package:town_pass/util/tp_route.dart';
 import 'package:town_pass/util/tp_text.dart';
 
-/// 首頁的「一步一步來」入口：一打開城市通就看得到，不必先到「服務」頁找。
+/// 首頁的「一路相伴」入口：一打開城市通就看得到，不必先到「服務」頁找。
 /// 圖示用白色圓底，和「服務」頁的我的服務一致。
 class LifeEventsEntryWidget extends StatelessWidget {
   const LifeEventsEntryWidget({super.key});
@@ -16,7 +16,7 @@ class LifeEventsEntryWidget extends StatelessWidget {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      // 整張卡片是一個按鈕，讀屏念「一步一步來，說明，按鈕」，不重複念裡面的文字
+      // 整張卡片是一個按鈕，讀屏念「一路相伴，說明，按鈕」，不重複念裡面的文字
       child: Semantics(
         button: true,
         label: '${item.title}，${item.description}',

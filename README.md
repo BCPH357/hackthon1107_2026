@@ -1,6 +1,6 @@
 <div align="center">
 
-# 一步一步來
+# 一路相伴
 
 **把政府服務照人生事件排好，讓「用不了」的人也能一步一步辦完**
 
@@ -131,7 +131,7 @@
 
 ```mermaid
 flowchart LR
-    A["台北通首頁<br>「一步一步來」"] --> B["字級與對比<br>（第一次）"]
+    A["台北通首頁<br>「一路相伴」"] --> B["字級與對比<br>（第一次）"]
     B --> C["你的情況<br>帳號資料自動帶入"]
     C --> D["要辦的事<br>依情況推薦"]
     D --> E["步驟清單<br>照順序排好"]
@@ -229,7 +229,7 @@ sequenceDiagram
 | 朗讀 | Web Speech API（手機系統的語音引擎，不經過雲端） |
 | 台北通 App | Flutter 3.47.6（fvm）、GetX、flutter_inappwebview |
 | 藍牙 | bluetooth_low_energy 6.2（GATT 廣播與讀取） |
-| 裝置端 AI | flutter_edge_ai 2.5.6、flutter_edge_ai_litertlm 1.19.2、Gemma 4 E2B／E4B IT |
+| 裝置端 AI | flutter_edge_ai 2.5.6、flutter_edge_ai_litertlm 1.19.2、Gemma 4 E2B IT |
 | 後端 | Flask（Python）、gunicorn、Docker |
 | 部署 | Cloudflare Pages（wrangler）、cloudflared 快速通道 |
 | 品質檢查 | 開發時以 Playwright（Chrome）跑操作流程，以 axe-core 檢查 WCAG 2.2 A／AA |
@@ -301,7 +301,7 @@ fvm dart run build_runner build
 fvm flutter run
 ```
 
-台北通首頁的「一步一步來」預設開正式網址，網頁改版只要部署，App 不用重新建置。開發時要改開自己的網址：`fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/`。
+台北通首頁的「一路相伴」預設開正式網址，網頁改版只要部署，App 不用重新建置。開發時要改開自己的網址：`fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/`。
 
 ### 離線版（斷網 demo，選用）
 
@@ -334,13 +334,13 @@ App 執行時不呼叫任何雲端 LLM API，推論全部在手機上完成。�
 
 | 項目 | 內容 |
 | --- | --- |
-| 模型 | Google Gemma 4 E2B IT、Gemma 4 E4B IT（LiteRT Community 發布的 LiteRT-LM 格式） |
-| 量化 | E2B：`gemma-4-E2B-it.litertlm`，混合 2、4、8 位元量化；E4B：`gemma-4-E4B-it.litertlm`，3.66 GB 量化檔 |
+| 模型 | Google Gemma 4 E2B IT（LiteRT Community 發布的 LiteRT-LM 格式） |
+| 量化 | `gemma-4-E2B-it.litertlm`，混合 2、4、8 位元量化，約 2.59 GB |
 | 推論框架 | flutter_edge_ai 2.5.6、flutter_edge_ai_litertlm 1.19.2（MIT） |
 | 模型授權 | Apache-2.0 |
-| 來源 | [E2B 模型卡](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm)、[E4B 模型卡](https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm) |
+| 來源 | [Gemma 4 E2B IT 模型卡](https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm) |
 
-模型檔另存於 App 私有空間，iPhone 實測以 USB 放進 App 資料容器的 `Library/Application Support/gemma-models/`。同時放兩個版本時預設先試 E4B，可用 `--dart-define=CITY_GUIDE_PREFER_E2B=true` 優先使用 E2B。沒有可用模型時，城市嚮導改用建議問題與「預設說明」，三站導覽照常可用。規劃與驗收見 [docs/ai-city-guide.md](docs/ai-city-guide.md)。
+模型檔另存於 App 私有空間，iPhone 實測以 USB 放進 App 資料容器的 `Library/Application Support/gemma-models/`。沒有可用模型時，城市嚮導改用建議問題與「預設說明」，三站導覽照常可用。規劃與驗收見 [docs/ai-city-guide.md](docs/ai-city-guide.md)。
 
 ### 開發時
 

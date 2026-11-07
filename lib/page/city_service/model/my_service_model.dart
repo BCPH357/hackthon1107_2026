@@ -7,7 +7,7 @@ import 'package:town_pass/gen/assets.gen.dart';
 // First, add new service within the MyServiceItemId enum;
 // Then add MyServiceItem within MyServiceIdExt extension.
 
-/// 「一步一步來」微服務（microservice/）的網址，必須是 https：Android 不允許 http。
+/// 「一路相伴」微服務（microservice/）的網址，必須是 https：Android 不允許 http。
 /// 預設是部署在 Cloudflare Pages 的正式網址（microservice/ 執行 npm run deploy 更新）。
 /// 要在手機上測還沒部署的版本時，建置時帶入通道網址即可蓋過：
 ///   fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
@@ -46,7 +46,7 @@ extension MyServiceIdExt on MyServiceItemId {
   MyServiceItem get item {
     return switch (this) {
       MyServiceItemId.lifeEvents => MyServiceItem(
-          title: '一步一步來',
+          title: '一路相伴',
           description: '人生大事要辦什麼、去哪辦，一步一步帶你完成',
           icon: Assets.svg.iconLifeEvents.svg(),
           category: MyServiceCategory.cityService,

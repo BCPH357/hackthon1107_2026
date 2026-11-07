@@ -1,8 +1,8 @@
-# 一步一步來（城市通微服務）
+# 一路相伴（城市通微服務）
 
 在城市通 WebView 中開啟的微服務網頁。使用者先說明自己或家人的情況，再選要辦的人生事件，服務會列出照順序排好的步驟，以及每一步可以用的政府資源與台北通服務。劇情與範圍見 [`docs/story-plan.md`](../docs/story-plan.md)。
 
-服務名稱「一步一步來」是暫定名稱，改 `src/config.ts` 的 `APP_NAME` 即可。
+服務名稱是「一路相伴」，定義在 `src/config.ts` 的 `APP_NAME`，畫面上的服務名稱都從這裡來。
 
 ## 執行
 
@@ -22,7 +22,7 @@ npm run preview    # 預覽打包結果，http://localhost:4173
 
 正式網址：**https://townpass-life-events.pages.dev/**
 
-微服務的網頁放在 Cloudflare Pages：網址固定、自動 HTTPS、免費方案就夠用，不需要自己的電腦一直開著。台北通 App 的「一步一步來」預設就開這個網址。
+微服務的網頁放在 Cloudflare Pages：網址固定、自動 HTTPS、免費方案就夠用，不需要自己的電腦一直開著。台北通 App 的「一路相伴」預設就開這個網址。
 
 更新上線：
 

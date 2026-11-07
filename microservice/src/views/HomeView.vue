@@ -33,7 +33,7 @@ const HOW_IT_WORKS = [
     <!-- 仿範本開場：整塊色底、大標題，三張分頁卡依序浮起；色底用 primary100，和上方 primary500 標題列同色系 -->
     <section class="hero" aria-labelledby="hero-title">
       <div class="hero__top">
-        <p class="hero__eyebrow">人生大事，一步一步來</p>
+        <p class="hero__eyebrow">人生大事，一路相伴</p>
         <DisplayButton />
       </div>
       <!-- 以詞組為單位換行，避免「我們」被拆成兩行；字放大時詞組內仍可換行 -->

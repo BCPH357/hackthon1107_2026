@@ -27,7 +27,7 @@
 
 - 作品主體是在城市通 WebView 裡開啟的微服務網頁：前端 Vue 3 + Vite + TypeScript 放 `microservice/`，後端 Flask 放 `backend/`
 - 不使用資料庫：使用者身分從 App 的 `userinfo` 取得，個人設定存 localStorage
-- 微服務部署在 Cloudflare Pages，固定網址 https://townpass-life-events.pages.dev/ ，在 `microservice/` 執行 `npm run deploy` 更新；台北通 App 的「一步一步來」預設開這個網址
+- 微服務部署在 Cloudflare Pages，固定網址 https://townpass-life-events.pages.dev/ ，在 `microservice/` 執行 `npm run deploy` 更新；台北通 App 的「一路相伴」預設開這個網址
 - 開發中要從自己電腦對外（或之後的 Flask 後端）時，用 Cloudflare 快速通道（網址每次會變）；ngrok 為備案（比賽規則允許）
 - TownPass 本體只改作品需要的部分，方便得獎後整併回官方版本
 
