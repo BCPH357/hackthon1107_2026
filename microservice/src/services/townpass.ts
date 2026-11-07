@@ -284,19 +284,6 @@ export async function receiveBleHandover(): Promise<{ result: BleHandoverReceive
   return { result: result ?? { state: 'error', message: 'timeout' }, mocked: false }
 }
 
-/** 地圖只用 OpenStreetMap（比賽規則） */
-export function openMapSearch(query: string): void {
-  openLink(`https://www.openstreetmap.org/search?query=${encodeURIComponent(query)}`)
-}
-
-/** OpenStreetMap 的步行路線規劃（OSRM 步行引擎） */
-export function openWalkingDirections(from: { lat: number; lng: number }, to: { lat: number; lng: number }): void {
-  const point = ({ lat, lng }: { lat: number; lng: number }) => `${lat.toFixed(6)},${lng.toFixed(6)}`
-  openLink(
-    `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=${encodeURIComponent(`${point(from)};${point(to)}`)}`,
-  )
-}
-
 export function openTownPassService(service: TownPassService): void {
   if (service.phone) callPhone(service.phone)
   else if (service.url) openLink(service.url)

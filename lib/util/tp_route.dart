@@ -196,12 +196,15 @@ abstract class TPRoute {
       null => Future.value(null),
       Uri uri => switch (uri.scheme) {
           'local' => Get.toNamed(uri.host),
+          // 微服務（本身就開在 webView 頁）用 open_link 開其他服務時，目標也是 webView 頁；
+          // GetX 預設會擋下「和目前頁面同名」的跳轉，連結就沒有反應，所以這裡允許重複開
           _ => Get.toNamed(
               TPRoute.webView,
               arguments: WebViewArgument(
                 url: uri.toString(),
                 forceTitle: forceTitle,
               ),
+              preventDuplicates: false,
             ),
         },
     };

@@ -5,7 +5,9 @@ import AppIcon from './AppIcon.vue'
 import CityLink from './CityLink.vue'
 import DisplayButton from './DisplayButton.vue'
 import EasyReadToggle from './EasyReadToggle.vue'
+import ReadPageButton from './ReadPageButton.vue'
 import { APP_VERSION } from '../config'
+import { ttsSupported } from '../services/speech'
 import { isInApp } from '../services/townpass'
 
 const props = defineProps<{
@@ -29,6 +31,9 @@ const router = useRouter()
 // 在台北通裡，App 的標題列已有標題與返回鍵，網頁不再重複
 const showPreviewBar = !isInApp()
 
+// 底部有浮動按鈕（城市地圖、朗讀）時，內容最下面要多留空間，才捲得到按鈕上方
+const hasFloatingButtons = computed(() => !props.hideCityLink || ttsSupported.value)
+
 const canGoBack = computed(() => {
   void route.fullPath
   return Boolean(window.history.state?.back) || Boolean(props.fallbackBack)
@@ -49,7 +54,7 @@ function goBack() {
       <span class="preview-bar__title">{{ title }}</span>
     </header>
 
-    <main class="page__main" :class="{ 'page__main--flush': flush, 'page__main--with-city-link': !hideCityLink }">
+    <main class="page__main" :class="{ 'page__main--flush': flush, 'page__main--with-city-link': hasFloatingButtons }">
       <!-- 城市通的標題列由 App 繪製，網頁無法放按鈕進去，所以放在內容最上方；城市地圖也保留，看不清楚的人在地圖上也要能調字級 -->
       <div v-if="!hideDisplayButton || showEasyRead" class="page__tools">
         <EasyReadToggle v-if="showEasyRead" />
@@ -62,12 +67,15 @@ function goBack() {
 
     <!-- 隨時都能跳進城市地圖：有固定底部按鈕時貼在它上方，沒有時浮在右下角 -->
     <footer v-if="$slots.footer" class="page__footer">
+      <ReadPageButton class="page__read page__read--docked" />
       <CityLink v-if="!hideCityLink" class="page__city-link page__city-link--docked" />
       <div class="page__footer-inner">
         <slot name="footer" />
       </div>
     </footer>
     <CityLink v-else-if="!hideCityLink" class="page__city-link page__city-link--floating" />
+    <!-- 朗讀這一頁：懸浮在左下角，和右下角的城市地圖對稱 -->
+    <ReadPageButton v-if="!$slots.footer" class="page__read page__read--floating" />
   </div>
 </template>
 
@@ -184,14 +192,33 @@ function goBack() {
   padding: 0.5rem var(--gutter);
 }
 
+/* 滿版頁面沒有底部內距：有浮動按鈕時，版本號下面留空間，不被左下角的朗讀按鈕蓋住 */
+.page__main--flush.page__main--with-city-link > .page__version {
+  padding-bottom: calc(5rem + var(--safe-bottom));
+}
+
 .page__main--flush {
   max-width: none;
   padding: 0;
   gap: 0;
 }
 
-.page__city-link {
+.page__city-link,
+.page__read {
   z-index: 6;
+}
+
+/* 左邊距固定 16px，不跟著字放大：200% 時才不會和右邊的城市地圖擠在一起 */
+.page__read--docked {
+  position: absolute;
+  left: 16px;
+  bottom: calc(100% + 0.75rem);
+}
+
+.page__read--floating {
+  position: fixed;
+  left: 16px;
+  bottom: calc(1rem + var(--safe-bottom));
 }
 
 .page__city-link--docked {

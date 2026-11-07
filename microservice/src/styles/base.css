@@ -132,6 +132,14 @@ a {
   outline-offset: 2px;
 }
 
+/* 朗讀這一頁時，念到的那一段框起來，方便邊聽邊看（components/ReadPageButton.vue） */
+[data-reading] {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+  background-color: var(--c-secondary-50);
+}
+
 /* 換頁時程式把焦點移到大標題，給讀屏用；標題本身不需要焦點框 */
 h1[tabindex='-1']:focus {
   outline: none;

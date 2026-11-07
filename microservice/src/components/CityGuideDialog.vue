@@ -2,7 +2,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { GUIDE_QUESTION, NO_GUIDE_MATCH, ROUTE_CHOICE, guideChoices, type GuideChoice } from '../city/guide'
 import { askCityGuide, cityGuideStatus, listenToCityGuide } from '../services/cityGuide'
-import { localTtsSupported, speakChunks, stopSpeaking } from '../services/speech'
+import { stopSpeaking } from '../services/speech'
 import AppIcon from './AppIcon.vue'
 
 defineProps<{ titleId: string }>()
@@ -121,12 +121,6 @@ async function listen(): Promise<void> {
         <p>{{ answer.text }}</p>
         <div class="guide-dialog__actions">
           <button v-if="answer.label" class="btn btn--primary" type="button" @click="emit('guide', answer)">帶我去</button>
-          <button
-            v-if="localTtsSupported"
-            class="btn btn--ghost"
-            type="button"
-            @click="speakChunks([{ key: 'city-guide', text: answer.text }], true)"
-          >朗讀</button>
         </div>
       </template>
     </div>

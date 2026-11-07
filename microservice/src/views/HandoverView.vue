@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
@@ -119,6 +120,16 @@ function retry() {
   if (link?.version && !pending.value) startSharing()
   else void confirm()
 }
+
+// 從事件頁的「交給家人」進來（?send=1）：不用再按「確認交棒」，一進來就上傳並開始用藍牙傳送。
+// 網址的 send 拿掉，返回或重新整理時不會再送一次
+const route = useRoute()
+const router = useRouter()
+onMounted(() => {
+  if (route.query.send !== '1') return
+  void router.replace({ query: {} })
+  if (pending.value) void confirm()
+})
 
 // 離開頁面時一定要停止藍牙廣播
 onBeforeUnmount(stop)

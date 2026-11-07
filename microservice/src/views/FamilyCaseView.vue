@@ -4,7 +4,7 @@ import AppIcon from '../components/AppIcon.vue'
 import PageLayout from '../components/PageLayout.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
 import { findEvent } from '../data/lifeEvents'
-import { findLink, markFamilyStepDone, refreshCase, syncErrorMessage } from '../stores/cases'
+import { findLink, refreshCase, setFamilyStepDone, syncErrorMessage } from '../stores/cases'
 import { isEasyRead } from '../stores/display'
 import { showToast } from '../stores/toast'
 import { useDocumentTitle } from '../utils/documentTitle'
@@ -35,8 +35,8 @@ async function refresh() {
   if (error) showToast(`沒有取得最新進度：${syncErrorMessage(error)}`)
 }
 
-async function markDone(stepId: string) {
-  const error = await markFamilyStepDone(link.value, stepId)
+async function toggleDone(stepId: string) {
+  const error = await setFamilyStepDone(link.value, stepId, !isDone(stepId))
   if (error) showToast(`沒有同步給家人：${syncErrorMessage(error)}`)
 }
 
@@ -68,13 +68,13 @@ onMounted(refresh)
               </ul>
             </details>
           </div>
-          <!-- 已完成的不會被退回，所以辦好後不能取消 -->
+          <!-- 再按一次可以取消打勾，會同步到家人的手機 -->
           <button
             type="button"
             class="step__done"
-            :disabled="isDone(step.id)"
             :aria-pressed="isDone(step.id)"
-            @click="markDone(step.id)"
+            :aria-label="`${isDone(step.id) ? '取消打勾' : '打勾'}：「${step.title}」我已辦好`"
+            @click="toggleDone(step.id)"
           >
             <AppIcon :name="isDone(step.id) ? 'check-square' : 'square'" size="1.75rem" />
             {{ isDone(step.id) ? '已辦好' : '我已辦好' }}

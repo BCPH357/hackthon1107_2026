@@ -36,9 +36,13 @@ class TPWebView extends StatelessWidget {
     this.titleController,
   });
 
-  String get url => (Get.arguments as WebViewArgument?)?.url ?? '';
+  /// 建立頁面當下的參數。微服務裡再開其他服務時會疊兩個 webView 頁，
+  /// Get.arguments 永遠是最上面那一頁的，所以每一頁先記住自己的
+  final WebViewArgument? _argument = Get.arguments is WebViewArgument ? Get.arguments as WebViewArgument : null;
 
-  String? get forceTitle => (Get.arguments as WebViewArgument?)?.forceTitle;
+  String get url => _argument?.url ?? '';
+
+  String? get forceTitle => _argument?.forceTitle;
 
   final TPAppBarController _defaultTitleController = TPAppBarController();
 

@@ -2,7 +2,7 @@
 //
 // - 一件事一個案件：每個案件有自己的 caseId、存取權杖、金鑰；同一件事再交棒會沿用原本的案件。
 // - 第一次見面用藍牙傳「交棒票」（caseId、權杖、金鑰），案件內容放在伺服器。
-// - 合併規則：已完成的不會被退回；其他情況以每一步的更新時間較新者為準。
+// - 合併規則：以每一步的更新時間較新者為準；打勾與取消打勾都會同步到另一支手機。
 // - 目前上傳明文（format: 'plain'），階段 4 改成 AES-GCM 加密後只上傳密文。
 
 import { computed, reactive, watch } from 'vue'
@@ -131,8 +131,7 @@ export function hasPendingHandover(eventId: string, steps: readonly StepDef[]): 
 function mergeStep(a: CaseStep | undefined, b: CaseStep | undefined): CaseStep | undefined {
   if (!a) return b
   if (!b) return a
-  // 已完成的不會被退回
-  if (a.done !== b.done) return a.done ? a : b
+  // 以最後一次修改為準（打勾或取消都算）
   return b.updatedAt > a.updatedAt ? b : a
 }
 
@@ -201,18 +200,18 @@ function buildElderDoc(eventId: string, steps: readonly StepDef[], previous: Cas
   const docSteps: Record<string, CaseStep> = {}
   for (const step of steps) {
     const prev = previous?.steps[step.id]
-    // 已完成的不會被退回：家人辦好的步驟，就算長輩這裡沒勾也維持完成
-    const done = isStepDone(eventId, step.id) || (prev?.done ?? false)
+    // 長輩手機上的打勾已經先和伺服器同步過（applyDoneToProgress），和上次不同就是長輩剛改的
+    const done = isStepDone(eventId, step.id)
     const owner: StepOwner = isMarked(eventId, step.id) ? 'family' : 'elder'
     docSteps[step.id] = prev && prev.done === done && prev.owner === owner ? prev : { done, owner, updatedAt: now }
   }
   return { v: 1, eventId, elderName: elderName ?? previous?.elderName ?? null, steps: docSteps }
 }
 
-/** 家人辦好的步驟同步回長輩自己的進度（打勾） */
+/** 伺服器上的進度同步回長輩自己的打勾：家人打勾或取消都跟著改 */
 export function applyDoneToProgress(link: CaseLink): void {
   for (const [stepId, step] of Object.entries(link.doc?.steps ?? {})) {
-    if (step.done && !isStepDone(link.eventId, stepId)) setStepDone(link.eventId, stepId, true)
+    if (step.done !== isStepDone(link.eventId, stepId)) setStepDone(link.eventId, stepId, step.done)
   }
 }
 
@@ -241,9 +240,10 @@ export async function handOver(
     // 取回 reactive 版本，之後的修改才會存進 localStorage
     link = caseLinks[linkKey('elder', caseId)]
   } else if (link.version > 0) {
-    // 先拿到家人最新的進度，免得蓋掉
+    // 先拿到家人最新的進度並同步到這支手機，免得蓋掉
     const error = await refreshCase(link)
     if (error) return { link, error }
+    applyDoneToProgress(link)
   }
   const error = await pushDoc(link, buildElderDoc(eventId, steps, link.doc, elderName))
   return { link, error }
@@ -295,14 +295,14 @@ export async function acceptTicket(ticket: HandoverTicket): Promise<{ link: Case
   return { link: caseLinks[key], error: null }
 }
 
-/** 子女把交給自己的一步標成已辦好（已完成的不會被退回，所以只有勾、沒有取消） */
-export async function markFamilyStepDone(link: CaseLink, stepId: string): Promise<SyncError | null> {
+/** 子女把交給自己的一步標成已辦好，或取消打勾 */
+export async function setFamilyStepDone(link: CaseLink, stepId: string, done: boolean): Promise<SyncError | null> {
   if (!link.doc) return { kind: 'invalid' }
   const prev = link.doc.steps[stepId]
-  if (!prev || prev.done) return null
+  if (!prev || prev.done === done) return null
   const doc: CaseDoc = {
     ...link.doc,
-    steps: { ...link.doc.steps, [stepId]: { ...prev, done: true, updatedAt: Date.now() } },
+    steps: { ...link.doc.steps, [stepId]: { ...prev, done, updatedAt: Date.now() } },
   }
   // 先更新畫面，上傳失敗再提示；下次同步時會合併上去
   link.doc = doc

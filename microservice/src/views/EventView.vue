@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, watchEffect } from 'vue'
+import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import HelpCard from '../components/HelpCard.vue'
 import PageLayout from '../components/PageLayout.vue'
@@ -23,6 +24,7 @@ import { showToast } from '../stores/toast'
 import { useDocumentTitle } from '../utils/documentTitle'
 
 const props = defineProps<{ eventId: string }>()
+const router = useRouter()
 
 // 路由的 beforeEnter 已確認事件存在
 const event = computed(() => findEvent(props.eventId)!)
@@ -66,13 +68,17 @@ function handoverStatus(stepId: string): { text: string; tone: 'primary' | 'coun
   return null
 }
 
+/** 點「交給家人」就直接送出：標記後進交棒頁，馬上上傳並用藍牙傳給家人；再點一次就是取消交給家人，同樣直接更新 */
+function handOverStep(stepId: string) {
+  toggleMark(event.value.id, stepId)
+  if (hasPendingHandover(event.value.id, steps.value)) {
+    void router.push({ path: `/events/${event.value.id}/handover`, query: { send: '1' } })
+  }
+}
+
 async function toggleDone(stepId: string) {
   const done = isStepDone(event.value.id, stepId)
-  // 已完成的不會被退回：已同步給家人的完成狀態不能取消
-  if (done && syncedDone(stepId)) {
-    showToast('這一步已經同步給家人，不能取消打勾')
-    return
-  }
+  // 打勾和取消都會同步給家人（以最後一次修改為準）
   setStepDone(event.value.id, stepId, !done)
   const error = await pushElderProgress(event.value.id, steps.value)
   if (error) showToast(`進度沒有同步給家人：${syncErrorMessage(error)}`)
@@ -150,7 +156,7 @@ onMounted(async () => {
               :class="{ 'step__handover--on': isMarked(event.id, step.id) }"
               :aria-pressed="isMarked(event.id, step.id)"
               :aria-label="`交給家人：第 ${index + 1} 步「${step.title}」`"
-              @click="toggleMark(event.id, step.id)"
+              @click="handOverStep(step.id)"
             >
               <AppIcon name="users" size="1.5rem" />
               <span aria-hidden="true">{{ isMarked(event.id, step.id) ? '交給家人辦' : '交給家人' }}</span>

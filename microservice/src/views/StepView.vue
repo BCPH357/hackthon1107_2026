@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, watch } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import HelpCard from '../components/HelpCard.vue'
@@ -9,8 +9,8 @@ import StepModeBadge from '../components/StepModeBadge.vue'
 import { DATA_NOTICE } from '../config'
 import { findEvent } from '../data/lifeEvents'
 import { TOWNPASS_SERVICES, isServiceAvailable } from '../data/townpassServices'
-import { callPhone, openLink, openMapSearch, openTownPassService } from '../services/townpass'
-import { currentKey, speakChunks, speaking, stopSpeaking, ttsSupported, type SpeechChunk } from '../services/speech'
+import { requestOrientationPermission } from '../services/compass'
+import { callPhone, openLink, openTownPassService } from '../services/townpass'
 import { isEasyRead } from '../stores/display'
 import { profiles, taipeiDistrict } from '../stores/identity'
 import { isStepDone, setStepDone } from '../stores/progress'
@@ -38,24 +38,6 @@ const easyStep = computed(() => (easy.value ? step.value.easy : undefined))
 const prepareItems = computed(() => easyStep.value?.prepare ?? step.value.prepare)
 const whereName = computed(() => easyStep.value?.where ?? where.value.name)
 
-// 朗讀內容依畫面順序；開著易讀版就念易讀文字
-const speechChunks = computed<SpeechChunk[]>(() => [
-  { key: 'title', text: `第 ${index.value + 1} 步，${step.value.title}。` },
-  { key: 'what', text: `要做什麼。${easyStep.value ? easyStep.value.what.join('') : step.value.what}` },
-  { key: 'prepare', text: `要準備什麼。${prepareItems.value.join('、')}。` },
-  { key: 'where', text: `去哪裡辦。${whereName.value}。` },
-  { key: 'help', text: '還是不清楚的話，可以撥打 1999。' },
-])
-
-function toggleSpeech() {
-  if (speaking.value) stopSpeaking()
-  else speakChunks(speechChunks.value)
-}
-
-// 離開這一步就停止朗讀
-watch(() => props.stepId, stopSpeaking)
-onBeforeUnmount(stopSpeaking)
-
 // 符合身分的資源排前面並標示「你可能符合」
 const resources = computed(() =>
   step.value.resources
@@ -72,6 +54,12 @@ const services = computed(() =>
 
 const eventPath = computed(() => `/events/${props.eventId}`)
 const stepPath = computed(() => `${eventPath.value}/steps/${props.stepId}`)
+
+/** AR 不再經過說明頁：iPhone 的方向感測器權限一定要在點擊當下要求，先送出再換頁，AR 頁一進去就開相機 */
+function openAr() {
+  void requestOrientationPermission()
+  void router.push(`${stepPath.value}/ar`)
+}
 
 function backToEvent() {
   // 從清單或城市地圖（嚮導的站點、類別抽屜）點進來就退回去，回到原本選步驟的地方；
@@ -104,20 +92,12 @@ function undo() {
         <span v-if="easyStep" class="badge badge--primary">易讀版</span>
         <span class="badge badge--draft">示範資料</span>
       </p>
-      <!-- 朗讀：只在能出聲的環境顯示（iPhone、有中文語音的瀏覽器）；Android WebView 沒有語音時自動隱藏 -->
-      <div v-if="ttsSupported" class="listen">
-        <button type="button" class="btn btn--secondary btn--block" @click="toggleSpeech">
-          <AppIcon :name="speaking ? 'stop' : 'speaker'" />
-          {{ speaking ? '停止朗讀' : '朗讀這一步' }}
-        </button>
-        <p v-if="speaking" class="muted" role="status">正在朗讀。沒有聲音的話，請檢查手機的靜音開關和音量。</p>
-      </div>
     </div>
 
     <SafetyCard v-if="event.sensitive" />
 
     <!-- CLAUDE_UI_GUIDE 2.5：固定依「要做什麼、要準備什麼、去哪裡辦、可以用的資源」的順序 -->
-    <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'what' }" aria-labelledby="what-title">
+    <section class="card tab-card block" aria-labelledby="what-title">
       <h2 id="what-title" class="section-title">要做什麼</h2>
       <!-- 易讀版：照順序一句一行，加上編號 -->
       <ol v-if="easyStep" class="easy-list">
@@ -129,7 +109,7 @@ function undo() {
       <p v-else>{{ step.what }}</p>
     </section>
 
-    <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'prepare' }" aria-labelledby="prepare-title">
+    <section class="card tab-card block" aria-labelledby="prepare-title">
       <div class="block__head">
         <h2 id="prepare-title" class="section-title">要準備什麼</h2>
         <span class="badge badge--draft">待查證</span>
@@ -143,24 +123,20 @@ function undo() {
       </ul>
     </section>
 
-    <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'where' }" aria-labelledby="where-title">
+    <section class="card tab-card block" aria-labelledby="where-title">
       <div class="block__head">
         <h2 id="where-title" class="section-title">去哪裡辦</h2>
         <span class="badge badge--draft">待查證</span>
       </div>
       <p class="where__name">{{ whereName }}</p>
       <p v-if="where.detail && !easyStep" class="muted">{{ where.detail }}</p>
-      <div v-if="where.phone || where.mapQuery || where.placeType" class="actions">
+      <div v-if="where.phone || where.placeType" class="actions">
         <button v-if="where.phone" type="button" class="btn btn--secondary" @click="callPhone(where.phone)">
           <AppIcon name="phone" />
           撥打 {{ where.phone }}
         </button>
-        <button v-if="where.mapQuery" type="button" class="btn btn--secondary" @click="openMapSearch(where.mapQuery)">
-          <AppIcon name="map-pin" />
-          在地圖上搜尋
-        </button>
         <!-- 有開放資料座標的地點：打開相機，用箭頭指出方向 -->
-        <button v-if="where.placeType" type="button" class="btn btn--secondary" @click="router.push(`${stepPath}/ar`)">
+        <button v-if="where.placeType" type="button" class="btn btn--secondary" @click="openAr">
           <AppIcon name="navigation" />
           用 AR 找方向
         </button>
@@ -270,20 +246,6 @@ function undo() {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
-}
-
-.listen {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-  margin-top: 0.25rem;
-}
-
-/* 念到哪一段就框起來，方便邊聽邊看；高對比模式的 --focus 是近黑色 */
-.block--reading {
-  background: var(--c-secondary-50);
-  outline: 3px solid var(--focus);
-  outline-offset: 2px;
 }
 
 .block__head {

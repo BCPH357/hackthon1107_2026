@@ -2,7 +2,7 @@
 // 「去哪裡辦」的 AR 方向指引：打開後鏡頭，畫面上的箭頭指向要去的機關，並用文字與朗讀說出方向和距離。
 // 箭頭是直線方向，不是路線規劃；要走的路線交給 OpenStreetMap。
 // 地點座標來自臺北資料大平台（src/data/places.ts），相機畫面不錄影、不上傳。
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import ArViewport from '../components/ArViewport.vue'
@@ -19,13 +19,11 @@ import {
 } from '../data/places'
 import { CAMERA_ERROR_TEXT, closeCamera, openRearCamera, type CameraError, type CameraResult } from '../services/camera'
 import { requestOrientationPermission, watchHeading, type HeadingReading } from '../services/compass'
-import { speakChunks, speaking, stopSpeaking, ttsSupported } from '../services/speech'
+import { stopSpeaking } from '../services/speech'
 import {
   callPhone,
   getCurrentPosition,
   isInApp,
-  openMapSearch,
-  openWalkingDirections,
   type DevicePosition,
 } from '../services/townpass'
 import { taipeiDistrict } from '../stores/identity'
@@ -60,7 +58,6 @@ useDocumentTitle(() => '用 AR 找方向')
 const DEMO_ORIGIN: LatLng & { name: string } = { name: '臺北市政府', lat: 25.037529, lng: 121.563692 }
 
 // ── 狀態 ──
-const phase = ref<'intro' | 'running'>('intro')
 const wantCamera = ref(true)
 const stream = shallowRef<MediaStream | null>(null)
 const cameraError = ref<CameraError | null>(null)
@@ -76,7 +73,6 @@ const position = ref<DevicePosition | null>(null)
 const forceDemo = ref(false)
 
 const selectedId = ref<string | null>(null)
-const directionEl = ref<HTMLElement | null>(null)
 const landscape = ref(false)
 
 let alive = true
@@ -129,7 +125,7 @@ const arrived = computed(() => {
 // ── 方向 ──
 const effectiveHeading = computed(() => {
   if (compassStatus.value === 'ok') return heading.value
-  if (!isInApp() && phase.value === 'running') return manualHeading.value
+  if (!isInApp()) return manualHeading.value
   return null
 })
 const relative = computed(() =>
@@ -185,7 +181,6 @@ const announcement = ref('')
 let lastAnnounce = 0
 let announceTimer = 0
 const announceKey = computed(() => {
-  if (phase.value !== 'running') return ''
   if (arrived.value) return 'arrived'
   return `${directionWord.value ?? (bearing.value === null ? '' : cardinal(bearing.value))}|${Math.round((distance.value ?? 0) / 100)}|${target.value.id}`
 })
@@ -199,23 +194,18 @@ watch(announceKey, (key) => {
   }, wait)
 })
 
-function speakDirection() {
-  if (speaking.value) stopSpeaking()
-  else speakChunks([{ key: 'direction', text: directionSentence.value }])
-}
-
 // ── 啟動與關閉 ──
-function start(withCamera: boolean) {
-  // iPhone 的方向感測器權限必須在點擊的當下要求，所以先送出，再做其他事
+/**
+ * 一進頁面就開始：步驟頁的「用 AR 找方向」在點擊當下已經要過方向感測器權限（iPhone 規定），
+ * 這裡再問一次只會拿到剛才的結果；相機與定位不需要點擊就能要求。
+ */
+function start() {
   const orientation = requestOrientationPermission()
-  const camera = withCamera ? openRearCamera(1) : null
-  wantCamera.value = withCamera
-  phase.value = 'running'
+  const camera = openRearCamera(1)
+  wantCamera.value = true
   if (locationStatus.value === 'off') void locate(true)
   void orientation.then(startCompass)
-  if (camera) void camera.then(attachCamera)
-  // 按下的按鈕會消失，把讀屏焦點移到方向說明，VoiceOver 接著念出目前的方向
-  void nextTick(() => directionEl.value?.focus())
+  void camera.then(attachCamera)
 }
 
 /** 相機剛關掉又打開、或被其他 App 占用時會暫時失敗，重開時多試兩次 */
@@ -329,7 +319,6 @@ function finish() {
 
 // 切到背景時關掉相機（省電，也避免相機燈一直亮著），回來後再打開
 function onVisibility() {
-  if (phase.value !== 'running') return
   if (document.hidden) stopCamera()
   else if (wantCamera.value && !stream.value) reopenCamera()
 }
@@ -340,6 +329,7 @@ const onLandscape = () => {
 }
 
 onMounted(() => {
+  start()
   onLandscape()
   landscapeQuery?.addEventListener('change', onLandscape)
   document.addEventListener('visibilitychange', onVisibility)
@@ -362,7 +352,7 @@ const rotation = computed(() => relative.value ?? bearing.value ?? 0)
 const walkText = computed(() => (distance.value === null ? '' : `走路約 ${walkingMinutes(distance.value)} 分鐘`))
 const poorAccuracy = computed(() => !demo.value && (position.value?.accuracy ?? 0) > 100)
 const needsCalibration = computed(() => compassStatus.value === 'ok' && (headingAccuracy.value ?? 0) > 25)
-const manualMode = computed(() => !isInApp() && phase.value === 'running' && compassStatus.value !== 'ok')
+const manualMode = computed(() => !isInApp() && compassStatus.value !== 'ok')
 const manualLabel = computed(() => `${cardinal(manualHeading.value)}（${Math.round(normalize360(manualHeading.value))} 度）`)
 const isHospital = computed(() => placeType.value === 'hospital')
 </script>
@@ -372,13 +362,9 @@ const isHospital = computed(() => placeType.value === 'hospital')
     <div class="stack">
       <p class="eyebrow">{{ event.title }}・{{ step.title }}</p>
       <h1 class="page-title"><span class="mark">用 AR 找方向</span></h1>
-      <p v-if="phase === 'intro'" class="lead">
-        打開相機後，畫面上的箭頭會指向{{ typeLabel }}。慢慢轉身，箭頭變成綠色，就是正前方。
-      </p>
     </div>
 
-    <!-- ── 使用中：AR 畫面與方向文字 ── -->
-    <template v-if="phase === 'running'">
+    <!-- ── AR 畫面與方向文字 ── -->
       <section class="ar" aria-labelledby="direction-title">
         <ArViewport
           :stream="stream"
@@ -394,17 +380,10 @@ const isHospital = computed(() => placeType.value === 'hospital')
 
         <div class="card direction">
           <h2 id="direction-title" class="visually-hidden">現在的方向</h2>
-          <p ref="directionEl" class="direction__sentence" tabindex="-1">{{ directionSentence }}</p>
+          <p class="direction__sentence">{{ directionSentence }}</p>
           <p v-if="walkText" class="muted">{{ walkText }}（以每分鐘 {{ WALK_METERS_PER_MINUTE }} 公尺、慢慢走估算）</p>
+          <p class="muted">箭頭指的是直線方向，不是走路路線。手機直著拿，走路時請抬頭看路，過馬路依照號誌。</p>
           <div class="actions">
-            <button v-if="ttsSupported" type="button" class="btn btn--secondary" @click="speakDirection">
-              <AppIcon :name="speaking ? 'stop' : 'speaker'" />
-              {{ speaking ? '停止朗讀' : '念出方向' }}
-            </button>
-            <button v-if="origin" type="button" class="btn btn--secondary" @click="openWalkingDirections(origin, target)">
-              <AppIcon name="map-pin" />
-              看走路路線
-            </button>
             <button type="button" class="btn btn--secondary" @click="toggleCamera">
               <AppIcon :name="wantCamera ? 'close' : 'camera'" />
               {{ wantCamera ? '關閉相機，只看箭頭' : '開啟相機' }}
@@ -461,30 +440,7 @@ const isHospital = computed(() => placeType.value === 'hospital')
         <label class="field__label" for="manual-heading">模擬手機面向（電腦預覽用）：{{ manualLabel }}</label>
         <input id="manual-heading" v-model.number="manualHeading" type="range" min="0" max="359" step="1" class="range" />
       </div>
-    </template>
-
-    <!-- ── 使用前：說明 ── -->
-    <template v-else>
-      <section class="card tab-card how" aria-labelledby="how-title">
-        <h2 id="how-title" class="section-title">怎麼用</h2>
-        <ol class="how__list">
-          <li class="how__item">
-            <span class="how__num" aria-hidden="true">1</span>
-            <span>把手機直著拿在胸前，鏡頭朝向前方。</span>
-          </li>
-          <li class="how__item">
-            <span class="how__num" aria-hidden="true">2</span>
-            <span>慢慢轉身，直到箭頭變成綠色、寫著「就在前方」。</span>
-          </li>
-          <li class="how__item">
-            <span class="how__num" aria-hidden="true">3</span>
-            <span>箭頭指的是直線方向，不是走路路線。走路時請抬頭看路，過馬路依照號誌。</span>
-          </li>
-        </ol>
-      </section>
-    </template>
-
-    <!-- ── 目的地（使用前、使用中都顯示） ── -->
+    <!-- ── 目的地 ── -->
     <section class="card tab-card target" aria-labelledby="target-title">
       <h2 id="target-title" class="section-title">要去的地方</h2>
       <div class="target__head">
@@ -492,7 +448,6 @@ const isHospital = computed(() => placeType.value === 'hospital')
         <span v-for="reason in targetReason" :key="reason" class="badge badge--primary">{{ reason }}</span>
       </div>
       <p class="muted">{{ target.address }}</p>
-      <p v-if="phase === 'intro' && !PREFER_OWN_DISTRICT[placeType]" class="muted">開始後會依你的位置，改成離你最近的{{ typeLabel }}。</p>
       <p v-if="isHospital" class="muted">各院區的科別不同，出發前請先打電話確認有你要看的科。</p>
 
       <div class="actions">
@@ -519,10 +474,6 @@ const isHospital = computed(() => placeType.value === 'hospital')
               ownMissing.address ? `${ownMissing.name}的地址是${ownMissing.address}。` : ''
             }}
           </span>
-          <button type="button" class="btn btn--ghost btn--sm" @click="openMapSearch(ownMissing.address ?? `臺北市${ownMissing.name}`)">
-            <AppIcon name="map-pin" />
-            在地圖上搜尋{{ ownMissing.name }}
-          </button>
         </span>
       </div>
     </section>
@@ -533,14 +484,7 @@ const isHospital = computed(() => placeType.value === 'hospital')
     </p>
 
     <template #footer>
-      <template v-if="phase === 'intro'">
-        <button type="button" class="btn btn--primary btn--block" @click="start(true)">
-          <AppIcon name="camera" />
-          開啟相機找方向
-        </button>
-        <button type="button" class="btn btn--ghost btn--block btn--sm" @click="start(false)">不開相機，只看箭頭</button>
-      </template>
-      <button v-else type="button" class="btn btn--primary btn--block" @click="finish">結束，回到這一步</button>
+      <button type="button" class="btn btn--primary btn--block" @click="finish">結束，回到這一步</button>
     </template>
   </PageLayout>
 </template>
@@ -625,39 +569,6 @@ const isHospital = computed(() => placeType.value === 'hospital')
   width: 100%;
   min-height: var(--tap);
   accent-color: var(--c-primary-700);
-}
-
-.how {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.how__list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.how__item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.75rem;
-}
-
-.how__num {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  margin-top: 0.1em;
-  border-radius: 50%;
-  background: var(--c-primary-100);
-  color: var(--c-primary-800);
-  font-size: var(--fs-body);
-  font-weight: 600;
 }
 
 .target {
