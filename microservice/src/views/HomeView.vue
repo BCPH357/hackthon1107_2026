@@ -1,11 +1,16 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import AppIcon from '../components/AppIcon.vue'
+import DisplayButton from '../components/DisplayButton.vue'
 import PageLayout from '../components/PageLayout.vue'
 import { APP_NAME } from '../config'
 import { findEvent } from '../data/lifeEvents'
+import { display } from '../stores/display'
 import { hasIdentity } from '../stores/identity'
 import { doneCount, lastEventId } from '../stores/progress'
+
+// 計畫書：先問「要怎麼用」再問「你是誰」，看不清楚的人才填得完後面的表單
+const startPath = computed(() => (display.chosen ? '/identity/who' : '/display?first=1'))
 
 const lastEvent = computed(() => (lastEventId.value ? findEvent(lastEventId.value) : undefined))
 const lastDone = computed(() => (lastEvent.value ? doneCount(lastEvent.value.id, lastEvent.value.steps) : 0))
@@ -18,10 +23,13 @@ const HOW_IT_WORKS = [
 </script>
 
 <template>
-  <PageLayout :title="APP_NAME">
+  <PageLayout :title="APP_NAME" hide-display-button>
     <!-- 仿範本開場：整塊色底、大標題，三張分頁卡依序浮起；色底用 primary100，和上方 primary500 標題列同色系 -->
     <section class="hero" aria-labelledby="hero-title">
-      <p class="hero__eyebrow">人生大事，一步一步來</p>
+      <div class="hero__top">
+        <p class="hero__eyebrow">人生大事，一步一步來</p>
+        <DisplayButton />
+      </div>
       <!-- 以詞組為單位換行，避免「我們」被拆成兩行；字放大時詞組內仍可換行 -->
       <h1 id="hero-title" class="hero__title">
         <span class="phrase">告訴我們你的情況，</span><span class="phrase">我們幫你把</span><span class="phrase"><span class="mark hero__mark">要辦的事排好</span></span>
@@ -62,7 +70,7 @@ const HOW_IT_WORKS = [
         <RouterLink to="/events" class="btn btn--primary btn--block">選要辦的事</RouterLink>
         <RouterLink to="/identity/summary" class="btn btn--ghost btn--block">修改我的情況</RouterLink>
       </template>
-      <RouterLink v-else to="/identity/who" class="btn btn--primary btn--block">開始</RouterLink>
+      <RouterLink v-else :to="startPath" class="btn btn--primary btn--block">開始</RouterLink>
     </template>
   </PageLayout>
 </template>
@@ -77,6 +85,15 @@ const HOW_IT_WORKS = [
   padding: 2rem var(--gutter) 2.25rem;
   background: var(--c-primary-100);
   color: var(--c-gray-900);
+}
+
+.hero__top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-top: -0.75rem;
 }
 
 .hero__eyebrow {

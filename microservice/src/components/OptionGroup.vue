@@ -141,7 +141,7 @@ function onChange(value: T, event: Event): void {
 }
 
 .option:has(.option__input:focus-visible) {
-  outline: 3px solid var(--c-secondary-500);
+  outline: 3px solid var(--focus);
   outline-offset: -3px;
 }
 

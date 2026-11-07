@@ -2,6 +2,8 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AppIcon from './AppIcon.vue'
+import DisplayButton from './DisplayButton.vue'
+import EasyReadToggle from './EasyReadToggle.vue'
 import { isInApp } from '../services/townpass'
 
 const props = defineProps<{
@@ -9,6 +11,10 @@ const props = defineProps<{
   title: string
   /** 沒有上一頁可回時，返回鍵改去這裡 */
   fallbackBack?: string
+  /** 首頁把「字級與對比」放在開場色塊裡、設定頁本身不需要，這兩頁傳 true */
+  hideDisplayButton?: boolean
+  /** 有易讀版內容的頁面（步驟清單、步驟詳情）顯示「易讀版」開關 */
+  showEasyRead?: boolean
 }>()
 
 const route = useRoute()
@@ -38,6 +44,11 @@ function goBack() {
     </header>
 
     <main class="page__main">
+      <!-- 城市通的標題列由 App 繪製，網頁無法放按鈕進去，所以放在內容最上方 -->
+      <div v-if="!hideDisplayButton || showEasyRead" class="page__tools">
+        <EasyReadToggle v-if="showEasyRead" />
+        <DisplayButton v-if="!hideDisplayButton" />
+      </div>
       <slot />
     </main>
 
@@ -102,6 +113,14 @@ function goBack() {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+.page__tools {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: -0.5rem 0 -0.75rem;
 }
 
 .page__footer {

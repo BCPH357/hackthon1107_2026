@@ -55,6 +55,20 @@ export interface WhereDef {
   districtMapQuery?: string
 }
 
+/**
+ * 易讀版文字：一句只講一件事、用日常用詞、把術語換成具體說明。
+ * 沒有寫的欄位會沿用一般版。
+ */
+export interface EasyStep {
+  /** 步驟清單上的一句話 */
+  summary: string
+  /** 要做什麼，照順序一句一行 */
+  what: string[]
+  prepare?: string[]
+  /** 不寫的話沿用一般版（已依行政區換成「大安區公所」這類具體地點） */
+  where?: string
+}
+
 export interface StepDef {
   id: string
   title: string
@@ -65,6 +79,7 @@ export interface StepDef {
   where: WhereDef
   resources: ResourceDef[]
   services: TownPassServiceId[]
+  easy?: EasyStep
 }
 
 export interface EventDef {

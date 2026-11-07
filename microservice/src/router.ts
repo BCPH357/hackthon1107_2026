@@ -1,8 +1,10 @@
+import { nextTick } from 'vue'
 import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-router'
 import { APP_NAME } from './config'
 import { findEvent } from './data/lifeEvents'
 import { identity } from './stores/identity'
 import { lastEventId } from './stores/progress'
+import DisplaySettingsView from './views/DisplaySettingsView.vue'
 import EventView from './views/EventView.vue'
 import EventsView from './views/EventsView.vue'
 import HomeView from './views/HomeView.vue'
@@ -23,6 +25,7 @@ declare module 'vue-router' {
 
 const routes: RouteRecordRaw[] = [
   { path: '/', component: HomeView, meta: { title: APP_NAME } },
+  { path: '/display', component: DisplaySettingsView, meta: { title: '字級與對比' } },
   { path: '/identity/who', component: IdentityWhoView, meta: { title: '你的情況' } },
   { path: '/identity/basic', component: IdentityBasicView, meta: { title: '你的情況', needsForWhom: true } },
   { path: '/identity/health', component: IdentityHealthView, meta: { title: '你的情況', needsForWhom: true } },
@@ -70,6 +73,16 @@ router.beforeEach((to) => {
   return true
 })
 
-router.afterEach((to) => {
+router.afterEach((to, from) => {
   if (to.meta.title) document.title = to.meta.title
+
+  // 單頁式網站換頁時，讀屏的焦點會停在上一頁的按鈕上，視障者不知道已經換頁。
+  // 把焦點移到新頁面的大標題，VoiceOver／TalkBack 就會念出新頁面。第一次載入不需要。
+  if (from.matched.length === 0) return
+  void nextTick(() => {
+    const heading = document.querySelector<HTMLElement>('main h1')
+    if (!heading) return
+    heading.setAttribute('tabindex', '-1')
+    heading.focus({ preventScroll: true })
+  })
 })

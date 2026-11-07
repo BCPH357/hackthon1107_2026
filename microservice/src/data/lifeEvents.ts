@@ -1,8 +1,17 @@
 // 人生事件與步驟，依計畫書「人生事件清單」「事件流程範例」兩節。
 // 內容是劇情草稿，尚未逐條對照官方資料，畫面上一律顯示 DATA_NOTICE。
 
+import { EASY_READ } from './easyRead'
 import type { IconKey } from './icons'
-import type { CategoryDef, EventDef, ProfileKey, ResourceDef, StepDef } from './types'
+import type { CategoryDef, EasyStep, EventDef, ProfileKey, ResourceDef, StepDef } from './types'
+
+/** 把易讀版文字依步驟 id 接到步驟上；易讀版寫錯 id 時網頁一載入就報錯（測試會抓到），不會默默失效 */
+function withEasy(easy: Record<string, EasyStep>, steps: StepDef[]): StepDef[] {
+  for (const id of Object.keys(easy)) {
+    if (!steps.some((step) => step.id === id)) throw new Error(`easyRead.ts 有找不到的步驟 id：${id}`)
+  }
+  return steps.map((step) => ({ ...step, easy: easy[step.id] }))
+}
 
 const LTC_HOTLINE: ResourceDef = {
   name: '1966 長照服務專線',
@@ -29,7 +38,7 @@ const HOUSEHOLD_OFFICE: ResourceDef = {
 
 // ── 家人疑似失智 ──────────────────────────────────────────
 
-const dementiaSteps: StepDef[] = [
+const dementiaSteps: StepDef[] = withEasy(EASY_READ.dementia, [
   {
     id: 'diagnosis',
     title: '就醫確認',
@@ -100,11 +109,11 @@ const dementiaSteps: StepDef[] = [
     ],
     services: ['neighborhood'],
   },
-]
+])
 
 // ── 出院返家照顧 ──────────────────────────────────────────
 
-const dischargeSteps: StepDef[] = [
+const dischargeSteps: StepDef[] = withEasy(EASY_READ.discharge, [
   {
     id: 'discharge-planning',
     title: '出院準備',
@@ -172,11 +181,11 @@ const dischargeSteps: StepDef[] = [
     ],
     services: ['medicalAppointment'],
   },
-]
+])
 
 // ── 懷孕到生產 ──────────────────────────────────────────
 
-const pregnancySteps: StepDef[] = [
+const pregnancySteps: StepDef[] = withEasy(EASY_READ.pregnancy, [
   {
     id: 'confirm',
     title: '確認懷孕',
@@ -255,11 +264,11 @@ const pregnancySteps: StepDef[] = [
     ],
     services: ['districtOffice', 'familyCenter'],
   },
-]
+])
 
 // ── 申請身心障礙證明 ──────────────────────────────────────
 
-const disabilitySteps: StepDef[] = [
+const disabilitySteps: StepDef[] = withEasy(EASY_READ.disability, [
   {
     id: 'apply',
     title: '到區公所申請',
@@ -334,11 +343,11 @@ const disabilitySteps: StepDef[] = [
     ],
     services: ['districtOffice'],
   },
-]
+])
 
 // ── 親人過世 ──────────────────────────────────────────
 
-const bereavementSteps: StepDef[] = [
+const bereavementSteps: StepDef[] = withEasy(EASY_READ.bereavement, [
   {
     id: 'death-certificate',
     title: '取得死亡證明',
@@ -405,7 +414,7 @@ const bereavementSteps: StepDef[] = [
     ],
     services: ['dedicatedLine'],
   },
-]
+])
 
 // ── 類別與事件 ──────────────────────────────────────────
 

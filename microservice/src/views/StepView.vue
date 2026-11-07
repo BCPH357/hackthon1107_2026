@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import AppIcon from '../components/AppIcon.vue'
 import HelpCard from '../components/HelpCard.vue'
@@ -9,6 +9,8 @@ import { DATA_NOTICE } from '../config'
 import { findEvent } from '../data/lifeEvents'
 import { TOWNPASS_SERVICES, isServiceAvailable } from '../data/townpassServices'
 import { callPhone, openMapSearch, openTownPassService } from '../services/townpass'
+import { currentKey, speakChunks, speaking, stopSpeaking, ttsSupported, type SpeechChunk } from '../services/speech'
+import { isEasyRead } from '../stores/display'
 import { profiles, taipeiDistrict } from '../stores/identity'
 import { isStepDone, setStepDone } from '../stores/progress'
 import { showToast } from '../stores/toast'
@@ -28,6 +30,30 @@ const done = computed(() => isStepDone(props.eventId, props.stepId))
 useDocumentTitle(() => step.value.title)
 
 const where = computed(() => resolveWhere(step.value.where, taipeiDistrict.value))
+
+// 易讀版：有寫易讀文字的欄位才換，沒寫的沿用一般版
+const easy = computed(() => isEasyRead())
+const easyStep = computed(() => (easy.value ? step.value.easy : undefined))
+const prepareItems = computed(() => easyStep.value?.prepare ?? step.value.prepare)
+const whereName = computed(() => easyStep.value?.where ?? where.value.name)
+
+// 朗讀內容依畫面順序；開著易讀版就念易讀文字
+const speechChunks = computed<SpeechChunk[]>(() => [
+  { key: 'title', text: `第 ${index.value + 1} 步，${step.value.title}。` },
+  { key: 'what', text: `要做什麼。${easyStep.value ? easyStep.value.what.join('') : step.value.what}` },
+  { key: 'prepare', text: `要準備什麼。${prepareItems.value.join('、')}。` },
+  { key: 'where', text: `去哪裡辦。${whereName.value}。` },
+  { key: 'help', text: '還是不清楚的話，可以撥打 1999。' },
+])
+
+function toggleSpeech() {
+  if (speaking.value) stopSpeaking()
+  else speakChunks(speechChunks.value)
+}
+
+// 離開這一步就停止朗讀
+watch(() => props.stepId, stopSpeaking)
+onBeforeUnmount(stopSpeaking)
 
 // 符合身分的資源排前面並標示「你可能符合」
 const resources = computed(() =>
@@ -64,44 +90,60 @@ function undo() {
 </script>
 
 <template>
-  <PageLayout :title="step.title" :fallback-back="eventPath">
+  <PageLayout :title="step.title" :fallback-back="eventPath" show-easy-read>
     <div class="stack">
       <p class="eyebrow">{{ event.title }}・第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
       <h1 class="page-title"><span class="mark">{{ step.title }}</span></h1>
       <p class="badges">
         <StepModeBadge :mode="step.mode" />
         <span v-if="done" class="badge badge--primary">已辦好</span>
+        <span v-if="easyStep" class="badge badge--primary">易讀版</span>
         <span class="badge badge--draft">示範資料</span>
       </p>
+      <!-- 朗讀：只在能出聲的環境顯示（iPhone、有中文語音的瀏覽器）；Android WebView 沒有語音時自動隱藏 -->
+      <div v-if="ttsSupported" class="listen">
+        <button type="button" class="btn btn--secondary btn--block" @click="toggleSpeech">
+          <AppIcon :name="speaking ? 'stop' : 'speaker'" />
+          {{ speaking ? '停止朗讀' : '朗讀這一步' }}
+        </button>
+        <p v-if="speaking" class="muted" role="status">正在朗讀。沒有聲音的話，請檢查手機的靜音開關和音量。</p>
+      </div>
     </div>
 
     <!-- CLAUDE_UI_GUIDE 2.5：固定依「要做什麼、要準備什麼、去哪裡辦、可以用的資源」的順序 -->
-    <section class="card tab-card block" aria-labelledby="what-title">
+    <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'what' }" aria-labelledby="what-title">
       <h2 id="what-title" class="section-title">要做什麼</h2>
-      <p>{{ step.what }}</p>
+      <!-- 易讀版：照順序一句一行，加上編號 -->
+      <ol v-if="easyStep" class="easy-list">
+        <li v-for="(line, i) in easyStep.what" :key="line" class="easy-list__item">
+          <span class="easy-list__num" aria-hidden="true">{{ i + 1 }}</span>
+          <span>{{ line }}</span>
+        </li>
+      </ol>
+      <p v-else>{{ step.what }}</p>
     </section>
 
-    <section class="card tab-card block" aria-labelledby="prepare-title">
+    <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'prepare' }" aria-labelledby="prepare-title">
       <div class="block__head">
         <h2 id="prepare-title" class="section-title">要準備什麼</h2>
         <span class="badge badge--draft">待查證</span>
       </div>
-      <p class="muted">清單是示範內容，出發前請先打電話確認要帶什麼。</p>
-      <ul class="checklist">
-        <li v-for="item in step.prepare" :key="item" class="checklist__item">
+      <p class="muted">{{ easyStep ? '出發前，先打電話問要帶什麼。' : '清單是示範內容，出發前請先打電話確認要帶什麼。' }}</p>
+      <ul class="checklist" :class="{ 'checklist--easy': easyStep }">
+        <li v-for="item in prepareItems" :key="item" class="checklist__item">
           <AppIcon name="check" class="checklist__icon" />
           <span>{{ item }}</span>
         </li>
       </ul>
     </section>
 
-    <section class="card tab-card block" aria-labelledby="where-title">
+    <section class="card tab-card block" :class="{ 'block--reading': currentKey === 'where' }" aria-labelledby="where-title">
       <div class="block__head">
         <h2 id="where-title" class="section-title">去哪裡辦</h2>
         <span class="badge badge--draft">待查證</span>
       </div>
-      <p class="where__name">{{ where.name }}</p>
-      <p v-if="where.detail" class="muted">{{ where.detail }}</p>
+      <p class="where__name">{{ whereName }}</p>
+      <p v-if="where.detail && !easyStep" class="muted">{{ where.detail }}</p>
       <div v-if="where.phone || where.mapQuery" class="actions">
         <button v-if="where.phone" type="button" class="btn btn--secondary" @click="callPhone(where.phone)">
           <AppIcon name="phone" />
@@ -114,8 +156,18 @@ function undo() {
       </div>
     </section>
 
-    <section class="block" aria-labelledby="resources-title">
-      <h2 id="resources-title" class="section-title">可以用的資源</h2>
+    <!-- 易讀版先只顯示要做什麼、要帶什麼、去哪裡，資源收進「看更多」 -->
+    <component
+      :is="easy ? 'details' : 'section'"
+      class="block"
+      :class="{ 'resources--collapsed': easy }"
+      :aria-labelledby="easy ? undefined : 'resources-title'"
+    >
+      <summary v-if="easy" class="resources__toggle">
+        <span>看可以用的資源和台北通服務</span>
+        <AppIcon name="chevron-down" class="resources__chevron" />
+      </summary>
+      <h2 v-else id="resources-title" class="section-title">可以用的資源</h2>
 
       <h3 class="sub-title">政府資源</h3>
       <ul class="resources">
@@ -157,7 +209,7 @@ function undo() {
           </li>
         </ul>
       </template>
-    </section>
+    </component>
 
     <HelpCard />
 
@@ -195,6 +247,20 @@ function undo() {
   gap: 0.625rem;
 }
 
+.listen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  margin-top: 0.25rem;
+}
+
+/* 念到哪一段就框起來，方便邊聽邊看；高對比模式的 --focus 是近黑色 */
+.block--reading {
+  background: var(--c-secondary-50);
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
 .block__head {
   display: flex;
   flex-wrap: wrap;
@@ -230,6 +296,80 @@ function undo() {
 .where__name {
   font-size: var(--fs-title);
   font-weight: 600;
+}
+
+/* 易讀版：字大一級、行距加寬、每句前面有編號圓點 */
+.easy-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.easy-list__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  font-size: var(--fs-title);
+  line-height: 1.7;
+}
+
+.easy-list__num {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin-top: 0.15em;
+  border-radius: 50%;
+  background: var(--c-primary-100);
+  color: var(--c-primary-800);
+  font-size: var(--fs-h3);
+  font-weight: 600;
+}
+
+.checklist--easy .checklist__item {
+  font-size: var(--fs-title);
+  line-height: 1.6;
+}
+
+.resources--collapsed {
+  border-radius: var(--radius);
+  background: var(--c-white);
+  box-shadow: var(--shadow);
+  padding: 0 1rem;
+}
+
+.resources--collapsed[open] {
+  padding-bottom: 1rem;
+}
+
+.resources__toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  list-style: none;
+}
+
+.resources__toggle::-webkit-details-marker {
+  display: none;
+}
+
+.resources__toggle span {
+  flex: 1;
+}
+
+.resources__chevron {
+  flex: none;
+  color: var(--c-gray-500);
+  transition: transform 0.2s ease;
+}
+
+.resources--collapsed[open] .resources__chevron {
+  transform: rotate(180deg);
 }
 
 .actions {

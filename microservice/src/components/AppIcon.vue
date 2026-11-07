@@ -14,6 +14,8 @@ export type IconName =
   | 'arrow-up-right'
   | 'square'
   | 'check-square'
+  | 'speaker'
+  | 'stop'
 
 withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' })
 </script>
@@ -65,6 +67,11 @@ withDefaults(defineProps<{ name: IconName; size?: string }>(), { size: '1.25em' 
     <path v-else-if="name === 'edit'" d="M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4" />
     <path v-else-if="name === 'arrow-up-right'" d="M7 17L17 7M9 7h8v8" />
     <rect v-else-if="name === 'square'" x="4" y="4" width="16" height="16" rx="4" />
+    <template v-else-if="name === 'speaker'">
+      <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" />
+      <path d="M15.5 9a4.2 4.2 0 0 1 0 6M18.2 6.3a8 8 0 0 1 0 11.4" />
+    </template>
+    <rect v-else-if="name === 'stop'" x="6.5" y="6.5" width="11" height="11" rx="2" />
     <template v-else-if="name === 'check-square'">
       <rect x="4" y="4" width="16" height="16" rx="4" fill="currentColor" stroke="currentColor" />
       <path d="M8 12.3l2.8 2.8L16.2 9.5" stroke="#fff" />

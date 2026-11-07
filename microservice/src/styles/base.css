@@ -54,6 +54,8 @@
   --gutter: 1rem;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --shadow: 0 4px 12px rgb(0 0 0 / 4%), 0 0 0 1px rgb(0 0 0 / 3%);
+  /* 鍵盤焦點框；高對比模式改成近黑色 */
+  --focus: var(--c-secondary-500);
 
   /* 動態曲線取自 nonprofit-website-template：起步快、收尾慢 */
   --ease-out: cubic-bezier(0.2, 0.75, 0.2, 1);
@@ -126,8 +128,13 @@ a {
 }
 
 :focus-visible {
-  outline: 3px solid var(--c-secondary-500);
+  outline: 3px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* 換頁時程式把焦點移到大標題，給讀屏用；標題本身不需要焦點框 */
+h1[tabindex='-1']:focus {
+  outline: none;
 }
 
 .visually-hidden {
@@ -494,4 +501,49 @@ a {
   50% {
     transform: scale(1.18);
   }
+}
+
+/* ── 高對比模式 ─────────────────────────
+ * 由「字級與對比」設定切換，或手機開了「增加對比」時第一次自動套用（stores/display.ts）。
+ * 只換「文字、框線、圖示」用的色票，淺色底色維持原樣，避免淺底被換深後上面的字反而看不到。
+ */
+:root[data-contrast='high'] {
+  --c-gray-200: #475259;
+  --c-gray-300: #30383d;
+  --c-gray-500: #30383d;
+  --c-gray-600: #171b1d;
+  --c-gray-700: #171b1d;
+  --c-gray-800: #0b0d0e;
+  --c-primary-200: #356c77;
+  --c-primary-300: #93d4df;
+  --c-primary-500: #22474e;
+  --c-primary-600: #22474e;
+  --c-primary-700: #112629;
+  --c-secondary-200: #f5ba4b;
+  /* 卡片外圍改成 2px 深色框線，不靠淡陰影分辨區塊 */
+  --shadow: 0 0 0 2px #171b1d;
+  --focus: #0b0d0e;
+}
+
+:root[data-contrast='high'] body {
+  background: var(--c-white);
+}
+
+/* 分頁卡的外形是濾鏡畫的，改成深色描邊 */
+:root[data-contrast='high'] .tab-card {
+  filter: drop-shadow(0 0 0.6px #171b1d) drop-shadow(0 0 0.6px #171b1d) drop-shadow(0 0 0.6px #171b1d);
+}
+
+:root[data-contrast='high'] .card--tint {
+  box-shadow: var(--shadow);
+}
+
+/* 標籤與只有文字的按鈕加上框線或底線，不只靠顏色辨認 */
+:root[data-contrast='high'] .badge {
+  border: 1px solid currentColor;
+}
+
+:root[data-contrast='high'] .btn--ghost {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }

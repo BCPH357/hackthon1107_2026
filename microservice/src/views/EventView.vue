@@ -6,6 +6,7 @@ import PageLayout from '../components/PageLayout.vue'
 import StepModeBadge from '../components/StepModeBadge.vue'
 import { DATA_NOTICE } from '../config'
 import { categoryOf, findEvent } from '../data/lifeEvents'
+import { isEasyRead } from '../stores/display'
 import { doneCount, isStepDone, lastEventId, setStepDone } from '../stores/progress'
 import { useDocumentTitle } from '../utils/documentTitle'
 
@@ -27,7 +28,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <PageLayout :title="event.title" fallback-back="/events">
+  <PageLayout :title="event.title" fallback-back="/events" show-easy-read>
     <div class="stack">
       <p v-if="category" class="eyebrow">{{ category.title }}</p>
       <h1 class="page-title"><span class="mark">{{ event.title }}</span></h1>
@@ -61,7 +62,7 @@ watchEffect(() => {
             <RouterLink :to="`/events/${event.id}/steps/${step.id}`" class="step__link">
               <span class="step__index">第 {{ index + 1 }} 步</span>
               <span class="step__title">{{ step.title }}</span>
-              <span class="step__summary">{{ step.summary }}</span>
+              <span class="step__summary">{{ isEasyRead() ? (step.easy?.summary ?? step.summary) : step.summary }}</span>
               <span class="step__meta">
                 <StepModeBadge :mode="step.mode" />
                 <span v-if="isStepDone(event.id, step.id)" class="badge badge--primary">已辦好</span>
@@ -71,7 +72,7 @@ watchEffect(() => {
               type="button"
               class="step__check"
               :aria-pressed="isStepDone(event.id, step.id)"
-              :aria-label="`第 ${index + 1} 步「${step.title}」我已辦好`"
+              :aria-label="`打勾：第 ${index + 1} 步「${step.title}」我已辦好`"
               @click="setStepDone(event.id, step.id, !isStepDone(event.id, step.id))"
             >
               <AppIcon :name="isStepDone(event.id, step.id) ? 'check-square' : 'square'" size="1.75rem" />
