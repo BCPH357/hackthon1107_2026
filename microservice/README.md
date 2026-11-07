@@ -78,7 +78,7 @@ fvm flutter run --dart-define=LIFE_EVENTS_URL=https://xxxx.trycloudflare.com/
 
 | name | 用途 |
 | --- | --- |
-| `userinfo` | 幫自己辦時，帶入年齡、是否設籍臺北、居住行政區、是否為原住民 |
+| `userinfo` | 第一次填「你的情況」時，帶入年齡、是否設籍臺北、居住行政區、是否為原住民 |
 | `phone_call` | 撥打 1999、1966 等專線 |
 | `open_link` | 開啟台北通內的其他服務、OpenStreetMap 地圖搜尋與步行路線、資料來源網頁 |
 | `location` | AR 方向指引取得目前位置（使用中每 5 秒更新一次）；一般瀏覽器改用 `navigator.geolocation` |

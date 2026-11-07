@@ -4,7 +4,6 @@ import {
   DISABILITY_LEVEL_OPTIONS,
   EMPLOYMENT_OPTIONS,
   FAMILY_OPTIONS,
-  FOR_WHOM_OPTIONS,
   FUNCTION_OPTIONS,
   GENDER_OPTIONS,
   HEALTH_OPTIONS,
@@ -19,7 +18,6 @@ import {
   type DisabilityLevel,
   type Employment,
   type FamilyTag,
-  type ForWhom,
   type FunctionTag,
   type Gender,
   type HealthTag,
@@ -32,9 +30,9 @@ import { readJson, writeJson } from '../utils/storage'
 
 const STORAGE_KEY = 'life-events.identity.v1'
 
+/** 「你的情況」一律是使用者本人（已拿掉「幫誰辦」；舊資料裡的 forWhom 欄位不再使用） */
 export interface Identity {
-  forWhom: ForWhom | null
-  /** 基本資料來源：台北通帳號帶入、家人用藍牙傳來，或使用者自己填 */
+  /** 基本資料來源：台北通帳號帶入、家人用藍牙傳來（舊資料），或使用者自己填 */
   basicSource: 'account' | 'bluetooth' | 'manual' | null
   basicConfirmed: boolean
   age: number | null
@@ -58,7 +56,6 @@ export interface Identity {
 
 function emptyIdentity(): Identity {
   return {
-    forWhom: null,
     basicSource: null,
     basicConfirmed: false,
     age: null,
@@ -87,12 +84,6 @@ export function resetIdentity(): void {
   Object.assign(identity, emptyIdentity())
 }
 
-/** 換了「幫誰辦」時，前一個人的資料不能沿用 */
-export function setForWhom(forWhom: ForWhom): void {
-  if (identity.forWhom === forWhom) return
-  Object.assign(identity, emptyIdentity(), { forWhom })
-}
-
 export const hasIdentity = computed(() => identity.completed)
 
 /** 行政區名稱；不知道或不住在臺北市時為 null */
@@ -117,13 +108,6 @@ export function computeProfiles(i: Identity): Set<ProfileKey> {
   add(...i.care)
   if (i.care.some((tag) => tag !== 'childcare')) add('caregiver')
 
-  // 幫家人辦時，操作的人本身就是照顧者
-  if (i.forWhom === 'family') {
-    if (profiles.has('elder') || profiles.has('dementia')) add('caregiver', 'careElder')
-    if (i.disabilityCard === 'yes') add('caregiver', 'careDisabled')
-    if (profiles.has('injured')) add('caregiver', 'carePatient')
-  }
-
   add(...i.family)
   if (i.employment === 'jobSeeking') add('jobSeeking')
   if (i.taipeiResident === 'yes') add('taipeiResident')
@@ -135,7 +119,6 @@ export function computeProfiles(i: Identity): Set<ProfileKey> {
 export const profiles = computed(() => computeProfiles(identity))
 
 export interface IdentitySummary {
-  forWhom: string | null
   basic: string[]
   health: string[]
   life: string[]
@@ -158,7 +141,7 @@ export function describeIdentity(i: Identity): IdentitySummary {
   health.push(...labelsOf(HEALTH_OPTIONS, i.health))
 
   const life = [
-    ...(i.forWhom === 'self' ? labelsOf(CARE_OPTIONS, i.care) : []),
+    ...labelsOf(CARE_OPTIONS, i.care),
     ...labelsOf(FAMILY_OPTIONS, i.family),
   ]
   const nationality = labelOf(NATIONALITY_OPTIONS, i.nationality)
@@ -168,13 +151,13 @@ export function describeIdentity(i: Identity): IdentitySummary {
   if (i.gender && i.gender !== 'undisclosed') life.push(labelOf(GENDER_OPTIONS, i.gender) ?? '')
   life.push(...labelsOf(OTHER_OPTIONS, i.others))
 
-  return { forWhom: labelOf(FOR_WHOM_OPTIONS, i.forWhom), basic, health, life: life.filter(Boolean) }
+  return { basic, health, life: life.filter(Boolean) }
 }
 
 export const identitySummary = computed(() => describeIdentity(identity))
 
 /** 一行摘要用的全部標籤 */
 export const identityTags = computed(() => {
-  const { forWhom, basic, health, life } = identitySummary.value
-  return [...(forWhom ? [forWhom] : []), ...basic, ...health, ...life]
+  const { basic, health, life } = identitySummary.value
+  return [...basic, ...health, ...life]
 })

@@ -35,7 +35,7 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
     </RouterLink>
     <section v-else class="card card--tint stack" aria-label="填寫情況">
       <p>先告訴我們你的情況，推薦會更準確。</p>
-      <RouterLink to="/identity/who" class="btn btn--secondary btn--block">告訴我們你的情況</RouterLink>
+      <RouterLink to="/identity/basic" class="btn btn--secondary btn--block">告訴我們你的情況</RouterLink>
     </section>
 
     <section class="stack" aria-labelledby="recommended-title">

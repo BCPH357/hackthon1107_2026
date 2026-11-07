@@ -3,7 +3,6 @@ import { createRouter, createWebHashHistory, type RouteRecordRaw } from 'vue-rou
 import { APP_NAME } from './config'
 import { findEvent, isSensitiveEvent } from './data/lifeEvents'
 import { findLink } from './stores/cases'
-import { identity } from './stores/identity'
 import { lastEventId } from './stores/progress'
 import DisplaySettingsView from './views/DisplaySettingsView.vue'
 import EventView from './views/EventView.vue'
@@ -17,26 +16,24 @@ import IdentityBasicView from './views/IdentityBasicView.vue'
 import IdentityHealthView from './views/IdentityHealthView.vue'
 import IdentityLifeView from './views/IdentityLifeView.vue'
 import IdentitySummaryView from './views/IdentitySummaryView.vue'
-import IdentityWhoView from './views/IdentityWhoView.vue'
 import ShareView from './views/ShareView.vue'
 import StepView from './views/StepView.vue'
 
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
-    /** 需要先選「幫誰辦」 */
-    needsForWhom?: boolean
   }
 }
 
 const routes: RouteRecordRaw[] = [
   { path: '/', component: HomeView, meta: { title: APP_NAME } },
   { path: '/display', component: DisplaySettingsView, meta: { title: '字級與對比' } },
-  { path: '/identity/who', component: IdentityWhoView, meta: { title: '你的情況' } },
-  { path: '/identity/basic', component: IdentityBasicView, meta: { title: '你的情況', needsForWhom: true } },
-  { path: '/identity/health', component: IdentityHealthView, meta: { title: '你的情況', needsForWhom: true } },
-  { path: '/identity/life', component: IdentityLifeView, meta: { title: '你的情況', needsForWhom: true } },
-  { path: '/identity/summary', component: IdentitySummaryView, meta: { title: '你的情況', needsForWhom: true } },
+  // 「這次是幫誰辦事？」已拿掉，舊連結直接進基本資料
+  { path: '/identity/who', redirect: '/identity/basic' },
+  { path: '/identity/basic', component: IdentityBasicView, meta: { title: '你的情況' } },
+  { path: '/identity/health', component: IdentityHealthView, meta: { title: '你的情況' } },
+  { path: '/identity/life', component: IdentityLifeView, meta: { title: '你的情況' } },
+  { path: '/identity/summary', component: IdentitySummaryView, meta: { title: '你的情況' } },
   { path: '/share', component: ShareView, meta: { title: '傳給家人' } },
   // 交棒：長輩把一件事裡做不到的步驟交給子女，子女在「家人交給我的事」看進度、打勾
   { path: '/handover/receive', component: HandoverReceiveView, meta: { title: '接收家人交棒' } },
@@ -113,7 +110,6 @@ router.beforeEach((to) => {
   if (first && to.path === '/' && lastEventId.value && findEvent(lastEventId.value) && !isSensitiveEvent(lastEventId.value)) {
     return `/events/${lastEventId.value}`
   }
-  if (to.meta.needsForWhom && !identity.forWhom) return '/identity/who'
   return true
 })
 

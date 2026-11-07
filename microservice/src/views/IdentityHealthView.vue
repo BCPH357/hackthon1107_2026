@@ -10,7 +10,7 @@ import { identity } from '../stores/identity'
 import { arrayModel } from '../utils/arrayModel'
 
 const router = useRouter()
-const subject = computed(() => (identity.forWhom === 'family' ? '家人' : '你'))
+const subject = '你'
 
 const disabilityCard = arrayModel(
   () => identity.disabilityCard,
@@ -35,7 +35,7 @@ function next() {
 
 <template>
   <PageLayout title="你的情況" fallback-back="/identity/basic">
-    <StepIndicator :current="3" :total="5" />
+    <StepIndicator :current="2" :total="4" />
     <div class="stack">
       <h1 class="page-title">{{ subject }}的身心與健康狀況</h1>
       <p class="lead">可以複選，沒有的話直接按下一步。這些只用來推薦，不是資格審查。</p>

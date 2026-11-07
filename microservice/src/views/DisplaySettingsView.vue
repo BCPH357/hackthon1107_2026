@@ -43,7 +43,7 @@ const sample = computed(() =>
 function finish() {
   display.chosen = true
   if (isFirstTime.value) {
-    router.push('/identity/who')
+    router.push('/identity/basic')
   } else if (window.history.state?.back) {
     router.back()
   } else {

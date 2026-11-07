@@ -11,13 +11,13 @@ import { hasIdentity } from '../stores/identity'
 import { doneCount, lastEventId } from '../stores/progress'
 
 // 計畫書：先問「要怎麼用」再問「你是誰」，看不清楚的人才填得完後面的表單
-const startPath = computed(() => (display.chosen ? '/identity/who' : '/display?first=1'))
+const startPath = computed(() => (display.chosen ? '/identity/basic' : '/display?first=1'))
 
 const lastEvent = computed(() => (lastEventId.value ? findEvent(lastEventId.value) : undefined))
 const lastDone = computed(() => (lastEvent.value ? doneCount(lastEvent.value.id, lastEvent.value.steps) : 0))
 
 const HOW_IT_WORKS = [
-  { title: '告訴我們你的情況', text: '幫自己或幫家人辦，台北通的資料會自動帶入' },
+  { title: '告訴我們你的情況', text: '只要第一次填，台北通的資料會自動帶入' },
   { title: '選要辦的事', text: '依你的情況推薦，例如申請長照、懷孕到生產' },
   { title: '照步驟完成', text: '每一步告訴你要帶什麼、去哪裡辦、誰能幫忙' },
 ]
@@ -61,8 +61,9 @@ const HOW_IT_WORKS = [
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
 
-    <!-- 被幫的人（例如長輩）用這裡把資料用藍牙傳給旁邊的家人 -->
-    <RouterLink to="/share" class="continue card">
+    <!-- 被幫的人（例如長輩）用這裡把資料用藍牙傳給旁邊的家人。
+         「你的情況」已拿掉「幫家人辦」，接收端跟著拿掉，所以先不顯示；ShareView 與 /share 路由保留，要恢復時把 v-if 拿掉 -->
+    <RouterLink v-if="false" to="/share" class="continue card">
       <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
       <span class="continue__text">
         <span class="continue__title">家人要幫你辦事？</span>
@@ -95,10 +96,8 @@ const HOW_IT_WORKS = [
     </p>
 
     <template #footer>
-      <template v-if="hasIdentity">
-        <RouterLink to="/events" class="btn btn--primary btn--block">選要辦的事</RouterLink>
-        <RouterLink to="/identity/summary" class="btn btn--ghost btn--block">修改我的情況</RouterLink>
-      </template>
+      <!-- 「你的情況」只在第一次（還沒有資料）時填寫，之後直接選要辦的事 -->
+      <RouterLink v-if="hasIdentity" to="/events" class="btn btn--primary btn--block">選要辦的事</RouterLink>
       <RouterLink v-else :to="startPath" class="btn btn--primary btn--block">開始</RouterLink>
     </template>
   </PageLayout>

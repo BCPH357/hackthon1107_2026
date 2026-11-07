@@ -12,7 +12,6 @@ const router = useRouter()
 const confirmingClear = ref(false)
 
 const sections = computed(() => [
-  { title: '幫誰辦', items: identitySummary.value.forWhom ? [identitySummary.value.forWhom] : [], to: '/identity/who' },
   { title: '基本資料', items: identitySummary.value.basic, to: '/identity/basic' },
   { title: '身心與健康', items: identitySummary.value.health, to: '/identity/health' },
   { title: '生活狀況', items: identitySummary.value.life, to: '/identity/life' },
@@ -34,14 +33,14 @@ function clearAll() {
 
 <template>
   <PageLayout title="你的情況" fallback-back="/identity/life">
-    <StepIndicator :current="5" :total="5" />
+    <StepIndicator :current="4" :total="4" />
     <div class="stack">
       <h1 class="page-title">確認一下</h1>
       <p class="lead">我們會依照下面的情況推薦要辦的事，之後隨時可以回來修改。</p>
     </div>
 
     <section class="overview card card--tint" aria-labelledby="overview-title">
-      <h2 id="overview-title" class="overview__label">{{ identity.forWhom === 'family' ? '家人的情況' : '你的情況' }}</h2>
+      <h2 id="overview-title" class="overview__label">你的情況</h2>
       <p class="overview__line">{{ identityTags.join('・') || '還沒有填寫任何條件' }}</p>
     </section>
 

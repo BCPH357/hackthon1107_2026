@@ -17,8 +17,7 @@ import { identity } from '../stores/identity'
 import { arrayModel } from '../utils/arrayModel'
 
 const router = useRouter()
-const isSelf = computed(() => identity.forWhom === 'self')
-const subject = computed(() => (isSelf.value ? '你' : '家人'))
+const subject = '你'
 
 const nationality = arrayModel(
   () => identity.nationality,
@@ -48,14 +47,13 @@ function next() {
 
 <template>
   <PageLayout title="你的情況" fallback-back="/identity/health">
-    <StepIndicator :current="4" :total="5" />
+    <StepIndicator :current="3" :total="4" />
     <div class="stack">
       <h1 class="page-title">{{ subject }}的生活狀況</h1>
       <p class="lead">都可以略過，選了能讓推薦更準確。</p>
     </div>
 
-    <!-- 幫家人辦時，操作的人就是照顧者，不必再問 -->
-    <OptionGroup v-if="isSelf" v-model="identity.care" legend="你有在照顧家人嗎？" :options="CARE_OPTIONS" multiple />
+    <OptionGroup v-model="identity.care" legend="你有在照顧家人嗎？" :options="CARE_OPTIONS" multiple />
     <OptionGroup v-model="identity.family" legend="經濟與家庭" :options="FAMILY_OPTIONS" multiple />
 
     <!-- CLAUDE_UI_GUIDE 2.2：不要一次攤開全部欄位，次要條件收在這裡 -->

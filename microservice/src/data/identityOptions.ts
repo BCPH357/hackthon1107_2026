@@ -18,11 +18,6 @@ export const DISTRICTS = [
 export const OUTSIDE_TAIPEI = 'outside'
 export const OUTSIDE_TAIPEI_LABEL = '不住在臺北市'
 
-export const FOR_WHOM_OPTIONS = [
-  { value: 'self', label: '幫自己辦' },
-  { value: 'family', label: '幫家人辦' },
-] as const
-
 export const YES_NO_OPTIONS = [
   { value: 'yes', label: '是' },
   { value: 'no', label: '否' },
@@ -93,7 +88,6 @@ export const OTHER_OPTIONS = [{ value: 'veteran', label: '榮民或榮眷' }] as
 
 type ValueOf<T extends readonly { value: string }[]> = T[number]['value']
 
-export type ForWhom = ValueOf<typeof FOR_WHOM_OPTIONS>
 export type YesNo = ValueOf<typeof YES_NO_OPTIONS>
 export type FunctionTag = ValueOf<typeof FUNCTION_OPTIONS>
 export type DisabilityCard = ValueOf<typeof DISABILITY_CARD_OPTIONS>
