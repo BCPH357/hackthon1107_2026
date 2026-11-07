@@ -13,7 +13,7 @@ const titleId = useId()
 </script>
 
 <template>
-  <section class="help card card--tint" :aria-labelledby="titleId">
+  <section class="help card tab-card" :aria-labelledby="titleId">
     <h2 :id="titleId" class="help__title">{{ title }}</h2>
     <p class="help__text">{{ text }}</p>
     <button type="button" class="btn btn--secondary btn--block" @click="callPhone(CITY_HOTLINE)">
@@ -25,10 +25,12 @@ const titleId = useId()
 </template>
 
 <style scoped>
+/* 求助出口用 primary50 淡藍底，和一般白色卡片區隔開來 */
 .help {
   display: flex;
   flex-direction: column;
   gap: 0.625rem;
+  background: var(--c-primary-50);
 }
 
 .help__title {

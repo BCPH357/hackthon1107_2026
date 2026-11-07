@@ -21,7 +21,7 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
 
 <template>
   <PageLayout title="要辦的事" fallback-back="/">
-    <h1 class="page-title">要辦什麼事？</h1>
+    <h1 class="page-title">要辦<span class="mark">什麼事</span>？</h1>
 
     <RouterLink v-if="hasIdentity" to="/identity/summary" class="identity card card--tint">
       <span class="identity__text">
@@ -40,8 +40,8 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
 
     <section class="stack" aria-labelledby="recommended-title">
       <h2 id="recommended-title" class="section-title">{{ hasRecommendation ? '為你推薦' : '常見的事' }}</h2>
-      <ul class="list card">
-        <li v-for="event in shownEvents" :key="event.id">
+      <ul class="list card tab-card">
+        <li v-for="(event, index) in shownEvents" :key="event.id" class="rise" :style="{ '--i': index }">
           <EventRow :event="event" :sub="event.summary ?? categoryOf(event.id)?.title" with-icon />
         </li>
       </ul>

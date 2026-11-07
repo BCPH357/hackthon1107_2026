@@ -67,7 +67,7 @@ function undo() {
   <PageLayout :title="step.title" :fallback-back="eventPath">
     <div class="stack">
       <p class="eyebrow">{{ event.title }}・第 {{ index + 1 }} 步，共 {{ steps.length }} 步</p>
-      <h1 class="page-title">{{ step.title }}</h1>
+      <h1 class="page-title"><span class="mark">{{ step.title }}</span></h1>
       <p class="badges">
         <StepModeBadge :mode="step.mode" />
         <span v-if="done" class="badge badge--primary">已辦好</span>
@@ -76,12 +76,12 @@ function undo() {
     </div>
 
     <!-- CLAUDE_UI_GUIDE 2.5：固定依「要做什麼、要準備什麼、去哪裡辦、可以用的資源」的順序 -->
-    <section class="card block" aria-labelledby="what-title">
+    <section class="card tab-card block" aria-labelledby="what-title">
       <h2 id="what-title" class="section-title">要做什麼</h2>
       <p>{{ step.what }}</p>
     </section>
 
-    <section class="card block" aria-labelledby="prepare-title">
+    <section class="card tab-card block" aria-labelledby="prepare-title">
       <div class="block__head">
         <h2 id="prepare-title" class="section-title">要準備什麼</h2>
         <span class="badge badge--draft">待查證</span>
@@ -95,7 +95,7 @@ function undo() {
       </ul>
     </section>
 
-    <section class="card block" aria-labelledby="where-title">
+    <section class="card tab-card block" aria-labelledby="where-title">
       <div class="block__head">
         <h2 id="where-title" class="section-title">去哪裡辦</h2>
         <span class="badge badge--draft">待查證</span>

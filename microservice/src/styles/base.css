@@ -54,6 +54,15 @@
   --gutter: 1rem;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --shadow: 0 4px 12px rgb(0 0 0 / 4%), 0 0 0 1px rgb(0 0 0 / 3%);
+
+  /* 動態曲線取自 nonprofit-website-template：起步快、收尾慢 */
+  --ease-out: cubic-bezier(0.2, 0.75, 0.2, 1);
+  --ease-soft: cubic-bezier(0.3, 0.7, 0.2, 1);
+
+  /* 資料夾分頁卡：分頁高度、分頁寬度、S 形肩部寬度 */
+  --tab-h: 0.75rem;
+  --tab-w: 4.5rem;
+  --tab-shoulder: 1.5rem;
 }
 
 *,
@@ -191,7 +200,13 @@ a {
   line-height: 1.35;
   text-align: center;
   text-decoration: none;
-  transition: background-color 0.15s ease;
+  transition:
+    background-color 0.15s ease,
+    transform 0.2s var(--ease-soft);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .btn--primary {
@@ -254,6 +269,67 @@ a {
 .card--tint {
   background: var(--c-primary-50);
   box-shadow: none;
+}
+
+/* ── 資料夾分頁卡 ─────────────────────
+ * 取自 nonprofit-website-template 的招牌造型：卡片左上多一片凸起的分頁，用 S 形曲線接回卡片。
+ * 範本用 clip-path: shape()，iOS 18.4 以前不支援（城市通最低 iOS 15），
+ * 這裡改用兩個偽元素：::before 是分頁本體、::after 用 mask 畫出 S 形肩部。
+ * 陰影改用 filter: drop-shadow 才會沿著分頁外形；偽元素在卡片外面，所以卡片不能 overflow: hidden。
+ */
+.tab-card {
+  position: relative;
+  margin-top: var(--tab-h);
+  border-top-left-radius: 0;
+  box-shadow: none;
+  filter: drop-shadow(0 4px 10px rgb(0 0 0 / 5%)) drop-shadow(0 0 1px rgb(0 0 0 / 12%));
+}
+
+.tab-card::before,
+.tab-card::after {
+  content: '';
+  position: absolute;
+  /* 往下多蓋 1px，避免分頁和卡片之間出現細縫 */
+  bottom: calc(100% - 1px);
+  height: calc(var(--tab-h) + 1px);
+  background: inherit;
+  pointer-events: none;
+}
+
+.tab-card::before {
+  left: 0;
+  width: var(--tab-w);
+  border-radius: var(--radius) 0 0 0;
+}
+
+.tab-card::after {
+  left: calc(var(--tab-w) - 1px);
+  width: var(--tab-shoulder);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12' preserveAspectRatio='none'%3E%3Cpath d='M0 0C10 0 10 12 20 12H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 12' preserveAspectRatio='none'%3E%3Cpath d='M0 0C10 0 10 12 20 12H0Z'/%3E%3C/svg%3E") 0 0 / 100% 100% no-repeat;
+}
+
+/* ── 大數字與螢光筆 ─────────────────── */
+
+/* 範本用細體大數字標步驟；TownPass 字級只有 Regular 與 SemiBold，這裡用 h1 Regular（36・w400） */
+.numeral {
+  display: block;
+  font-size: var(--fs-h1);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--c-gray-900);
+}
+
+/* 範本的螢光筆線：標題重點字底下畫一道色帶，進場時由左往右畫出來 */
+.mark {
+  --mark-color: var(--c-secondary-200);
+  padding: 0 0.1em;
+  margin: 0 -0.1em;
+  background: linear-gradient(var(--mark-color), var(--mark-color)) 0 88% / 100% 0.42em no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
 }
 
 .badge {
@@ -357,4 +433,65 @@ a {
 
 .input-suffix .input {
   max-width: 8rem;
+}
+
+/* ── 進場動態 ───────────────────────────
+ * 取自範本：內容由下往上浮起、依序錯開，螢光筆線由左往右畫出。
+ * 範本用 GSAP 與 Lenis；GSAP 不是開源授權（比賽規則要求開源套件），Lenis 會接管捲動、對輔助科技不友善，
+ * 所以只用 CSS 動畫。手機開啟「減少動態效果」時完全不動，畫面一開始就是完整的。
+ */
+@media (prefers-reduced-motion: no-preference) {
+  /* 每一頁的內容區塊依序浮起，最多錯開到第 6 塊 */
+  .page__main > * {
+    animation: rise 0.6s var(--ease-out) backwards;
+  }
+
+  .page__main > :nth-child(2) {
+    animation-delay: 0.06s;
+  }
+
+  .page__main > :nth-child(3) {
+    animation-delay: 0.12s;
+  }
+
+  .page__main > :nth-child(4) {
+    animation-delay: 0.18s;
+  }
+
+  .page__main > :nth-child(5) {
+    animation-delay: 0.24s;
+  }
+
+  .page__main > :nth-child(n + 6) {
+    animation-delay: 0.3s;
+  }
+
+  /* 清單項目各自錯開：在元素上設 style="--i: 索引" */
+  .rise {
+    animation: rise 0.7s var(--ease-out) backwards;
+    animation-delay: calc(0.15s + var(--i, 0) * 0.07s);
+  }
+
+  .mark {
+    animation: mark-draw 0.7s var(--ease-soft) 0.35s backwards;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(1.25rem);
+  }
+}
+
+@keyframes mark-draw {
+  from {
+    background-size: 0% 0.42em;
+  }
+}
+
+@keyframes pop {
+  50% {
+    transform: scale(1.18);
+  }
 }

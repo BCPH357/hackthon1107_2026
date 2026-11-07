@@ -30,7 +30,7 @@ watchEffect(() => {
   <PageLayout :title="event.title" fallback-back="/events">
     <div class="stack">
       <p v-if="category" class="eyebrow">{{ category.title }}</p>
-      <h1 class="page-title">{{ event.title }}</h1>
+      <h1 class="page-title"><span class="mark">{{ event.title }}</span></h1>
       <p v-if="event.intro" class="lead">{{ event.intro }}</p>
     </div>
 
@@ -49,14 +49,15 @@ watchEffect(() => {
         <li
           v-for="(step, index) in steps"
           :key="step.id"
-          class="step"
+          class="step rise"
           :class="{ 'step--done': isStepDone(event.id, step.id) }"
+          :style="{ '--i': index }"
         >
           <span class="step__marker" aria-hidden="true">
             <AppIcon v-if="isStepDone(event.id, step.id)" name="check" size="1.125rem" />
             <template v-else>{{ index + 1 }}</template>
           </span>
-          <div class="step__card">
+          <div class="step__card tab-card">
             <RouterLink :to="`/events/${event.id}/steps/${step.id}`" class="step__link">
               <span class="step__index">第 {{ index + 1 }} 步</span>
               <span class="step__title">{{ step.title }}</span>
@@ -139,13 +140,13 @@ watchEffect(() => {
   gap: 0.625rem;
 }
 
-/* 步驟之間的連接線 */
+/* 步驟之間的連接線：卡片上方多了分頁的高度，標記與連接線一起往下移，線接到下一個標記上緣 */
 .step:not(:last-child)::before {
   content: '';
   position: absolute;
   left: calc(1.125rem - 1px);
-  top: 3.25rem;
-  bottom: -0.75rem;
+  top: calc(3.25rem + var(--tab-h));
+  bottom: calc(-1.5rem - var(--tab-h));
   width: 2px;
   background: var(--c-primary-200);
 }
@@ -156,7 +157,7 @@ watchEffect(() => {
   justify-content: center;
   width: 2.25rem;
   height: 2.25rem;
-  margin-top: 0.875rem;
+  margin-top: calc(0.875rem + var(--tab-h));
   border: 2px solid var(--c-primary-500);
   border-radius: 50%;
   background: var(--c-white);
@@ -169,15 +170,20 @@ watchEffect(() => {
   color: var(--c-white);
 }
 
-/* 字放大到 200% 時文字欄太窄，「完成」按鈕會換到下一行變成整列 */
+@media (prefers-reduced-motion: no-preference) {
+  .step--done .step__marker {
+    animation: pop 0.35s var(--ease-soft);
+  }
+}
+
+/* 字放大到 200% 時文字欄太窄，「完成」按鈕會換到下一行變成整列
+ * 分頁卡的分頁在卡片外面，不能 overflow: hidden；圓角改由卡片本身處理 */
 .step__card {
   display: flex;
   flex-wrap: wrap;
   align-items: stretch;
-  border-radius: var(--radius);
+  border-radius: 0 var(--radius) var(--radius);
   background: var(--c-white);
-  box-shadow: var(--shadow);
-  overflow: hidden;
 }
 
 .step__link {

@@ -19,13 +19,31 @@ const HOW_IT_WORKS = [
 
 <template>
   <PageLayout :title="APP_NAME">
-    <section class="hero">
-      <p class="eyebrow">人生大事，一步一步來</p>
-      <h1 class="hero__title">告訴我們你的情況，我們幫你把要辦的事排好</h1>
-      <p class="lead">照顧家人、懷孕生產、親人過世，常常要跑好幾個機關。回答兩個問題，就能拿到一份照順序排好的清單。</p>
+    <!-- 仿範本開場：整塊色底、大標題，三張分頁卡依序浮起；色底用 primary100，和上方 primary500 標題列同色系 -->
+    <section class="hero" aria-labelledby="hero-title">
+      <p class="hero__eyebrow">人生大事，一步一步來</p>
+      <!-- 以詞組為單位換行，避免「我們」被拆成兩行；字放大時詞組內仍可換行 -->
+      <h1 id="hero-title" class="hero__title">
+        <span class="phrase">告訴我們你的情況，</span><span class="phrase">我們幫你把</span><span class="phrase"><span class="mark hero__mark">要辦的事排好</span></span>
+      </h1>
+      <p class="hero__lead">照顧家人、懷孕生產、親人過世，常常要跑好幾個機關。回答兩個問題，就能拿到一份照順序排好的清單。</p>
+
+      <h2 class="hero__how-title">怎麼使用</h2>
+      <ol class="how">
+        <li
+          v-for="(item, index) in HOW_IT_WORKS"
+          :key="item.title"
+          class="how__item card tab-card rise"
+          :style="{ '--i': index }"
+        >
+          <span class="numeral how__numeral" aria-hidden="true">{{ String(index + 1).padStart(2, '0') }}</span>
+          <strong class="how__title">{{ item.title }}</strong>
+          <span class="how__text">{{ item.text }}</span>
+        </li>
+      </ol>
     </section>
 
-    <RouterLink v-if="lastEvent" :to="`/events/${lastEvent.id}`" class="continue card">
+    <RouterLink v-if="lastEvent" :to="`/events/${lastEvent.id}`" class="continue card tab-card">
       <span class="continue__text">
         <span class="muted">繼續上次的事</span>
         <span class="continue__title">{{ lastEvent.title }}</span>
@@ -33,19 +51,6 @@ const HOW_IT_WORKS = [
       </span>
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
-
-    <section class="stack" aria-labelledby="how-title">
-      <h2 id="how-title" class="section-title">怎麼使用</h2>
-      <ol class="how">
-        <li v-for="(item, index) in HOW_IT_WORKS" :key="item.title" class="how__item">
-          <span class="how__number" aria-hidden="true">{{ index + 1 }}</span>
-          <span class="how__text">
-            <strong class="how__title">{{ item.title }}</strong>
-            <span class="muted">{{ item.text }}</span>
-          </span>
-        </li>
-      </ol>
-    </section>
 
     <p class="privacy muted">
       <AppIcon name="lock" />
@@ -63,35 +68,45 @@ const HOW_IT_WORKS = [
 </template>
 
 <style scoped>
+/* 滿版色塊：抵銷 page__main 的上方與左右內距 */
 .hero {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding-top: 0.5rem;
+  gap: 0.875rem;
+  margin: -1.25rem calc(-1 * var(--gutter)) 0;
+  padding: 2rem var(--gutter) 2.25rem;
+  background: var(--c-primary-100);
+  color: var(--c-gray-900);
 }
 
-.hero__title {
-  font-size: var(--fs-h2);
+.hero__eyebrow {
+  font-size: var(--fs-body);
   font-weight: 600;
-  line-height: 1.4;
+  color: var(--c-primary-700);
 }
 
-.continue {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  color: inherit;
-  text-decoration: none;
-  border: 1.5px solid var(--c-primary-200);
+/* primary100 底上的螢光筆改用 primary300，淡黃與白色在淺藍底上都看不出來 */
+.hero__mark {
+  --mark-color: var(--c-primary-300);
 }
 
-.continue__text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
+/* TPTextStyles h1 SemiBold（36・w600） */
+.hero__title {
+  font-size: var(--fs-h1);
+  font-weight: 600;
+  line-height: 1.25;
 }
 
-.continue__title {
+.phrase {
+  display: inline-block;
+}
+
+.hero__lead {
+  color: var(--c-gray-800);
+}
+
+.hero__how-title {
+  margin-top: 0.75rem;
   font-size: var(--fs-title);
   font-weight: 600;
 }
@@ -104,29 +119,42 @@ const HOW_IT_WORKS = [
 
 .how__item {
   display: flex;
-  gap: 0.875rem;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 1.25rem 1.25rem 1.375rem;
 }
 
-.how__number {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 2rem;
-  height: 2rem;
-  border-radius: 50%;
-  background: var(--c-primary-100);
-  color: var(--c-primary-800);
+.how__numeral {
+  margin-bottom: 0.75rem;
+}
+
+.how__title {
+  font-size: var(--fs-title);
   font-weight: 600;
+  line-height: 1.4;
 }
 
 .how__text {
+  font-size: var(--fs-body);
+  color: var(--c-gray-600);
+}
+
+.continue {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.continue__text {
+  flex: 1;
   display: flex;
   flex-direction: column;
 }
 
-.how__title {
+.continue__title {
+  font-size: var(--fs-title);
   font-weight: 600;
 }
 
