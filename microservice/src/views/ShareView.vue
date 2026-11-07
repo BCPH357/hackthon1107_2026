@@ -136,12 +136,14 @@ onBeforeUnmount(stop)
       <p class="waiting__label">請家人在「幫家人辦」的基本資料頁，按「用藍牙接收家人的資料」，並核對這組代碼：</p>
       <p class="waiting__code" :aria-label="`代碼 ${status.code.split('').join(' ')}`">{{ status.code }}</p>
       <p class="muted">兩支手機靠近一點，畫面不要關掉。1 分鐘內有效。</p>
+      <p v-if="mocked" class="badge badge--draft">瀏覽器預覽・沒有真的開藍牙，幾秒後會模擬家人已接收</p>
     </section>
 
     <section v-else-if="status.step === 'sent'" class="card stack waiting" role="status">
       <span class="done-icon"><AppIcon name="check" size="2rem" /></span>
       <p class="waiting__label">已經傳給家人了。</p>
       <p class="muted">藍牙傳送已經停止。</p>
+      <p v-if="mocked" class="badge badge--draft">瀏覽器預覽・模擬結果</p>
     </section>
 
     <template #footer>
