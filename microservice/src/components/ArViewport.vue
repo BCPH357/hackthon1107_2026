@@ -22,6 +22,9 @@ const props = defineProps<{
 /** 後鏡頭直拿時，畫面左右大約涵蓋 50 度；目的地落在這個範圍內才在畫面上畫標記 */
 const CAMERA_FOV = 50
 
+/** 地面箭頭圓盤的厚度：疊幾層側邊（離地面幾 px），盤面在最上層 */
+const RIM_DEPTHS = [3, 5.5, 8, 10.5, 13]
+
 const video = ref<HTMLVideoElement | null>(null)
 const needsTap = ref(false)
 
@@ -86,7 +89,25 @@ const labelShift = computed(() => (pinLeft.value === null ? 0 : (50 - pinLeft.va
       </div>
 
       <div class="pointer" :class="{ 'pointer--center': !stream }">
-        <span class="pointer__disc" :class="{ 'pointer__disc--aligned': aligned, 'pointer__disc--arrived': arrived }">
+        <!-- 有相機時，箭頭像畫在前方地面上：圓盤平躺、帶透視與厚度，只有盤面上的箭頭轉向目的地 -->
+        <div v-if="stream && !arrived" class="ground">
+          <div class="ground__plane">
+            <span class="ground__shadow" />
+            <span
+              v-for="depth in RIM_DEPTHS"
+              :key="depth"
+              class="ground__rim"
+              :class="{ 'ground__rim--aligned': aligned }"
+              :style="{ transform: `translateZ(${depth}px)` }"
+            />
+            <span class="pointer__disc pointer__disc--ground" :class="{ 'pointer__disc--aligned': aligned }">
+              <svg class="ground__chevron" viewBox="0 0 48 48" :style="{ transform: `rotate(${rotation}deg)` }">
+                <path d="M24 5 41 22 30.5 22 30.5 42 17.5 42 17.5 22 7 22Z" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
+              </svg>
+            </span>
+          </div>
+        </div>
+        <span v-else class="pointer__disc" :class="{ 'pointer__disc--aligned': aligned, 'pointer__disc--arrived': arrived }">
           <svg v-if="!arrived" class="pointer__arrow" viewBox="0 0 48 48" :style="{ transform: `rotate(${rotation}deg)` }">
             <path d="M24 4 40 40 24 31 8 40Z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
           </svg>
@@ -174,6 +195,8 @@ const labelShift = computed(() => (pinLeft.value === null ? 0 : (50 - pinLeft.va
 }
 
 .chip--strong {
+  position: relative;
+  z-index: 1;
   background: rgb(0 0 0 / 72%);
 }
 
@@ -260,6 +283,71 @@ const labelShift = computed(() => (pinLeft.value === null ? 0 : (50 - pinLeft.va
 .pointer__arrow {
   width: 65%;
   height: 65%;
+}
+
+/*
+ * 地面箭頭：圓盤往後倒 70 度平躺，像站著看前方的地面，越遠越窄；
+ * 盤面浮在地面上 14px，底下疊幾層深色側邊當厚度，再加一圈模糊的影子。
+ * 容器高度只留圓盤倒下後看得到的部分，下方的短句才不會離太遠。
+ */
+.ground {
+  --ground: min(52vw, 210px);
+  position: relative;
+  width: var(--ground);
+  height: calc(var(--ground) * 0.52);
+  perspective: 380px;
+  perspective-origin: 50% 10%;
+}
+
+.ground__plane {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: var(--ground);
+  height: var(--ground);
+  margin-top: calc(var(--ground) / -2);
+  transform: rotateX(70deg);
+  transform-style: preserve-3d;
+}
+
+.ground__shadow,
+.ground__rim,
+.pointer__disc--ground {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+}
+
+.ground__shadow {
+  background: rgb(0 0 0 / 45%);
+  filter: blur(10px);
+}
+
+.ground__rim {
+  background: #8d9ca4;
+  transition: background-color 0.2s ease;
+}
+
+.ground__rim--aligned {
+  background: #135235;
+}
+
+.pointer__disc--ground {
+  width: 100%;
+  height: 100%;
+  background: rgb(255 255 255 / 92%);
+  box-shadow: inset 0 0 0 4px rgb(0 0 0 / 6%);
+  transform: translateZ(14px);
+}
+
+.pointer__disc--ground.pointer__disc--aligned {
+  background: var(--ar-green);
+  box-shadow: inset 0 0 0 4px rgb(255 255 255 / 25%);
+}
+
+.ground__chevron {
+  width: 76%;
+  height: 76%;
 }
 
 /* ── 錶盤 ── */

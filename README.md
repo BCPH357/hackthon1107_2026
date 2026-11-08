@@ -75,7 +75,7 @@
 
 ### AR 方向指引
 
-要到區公所、戶政事務所或聯醫院區臨櫃辦理時，打開相機，大箭頭指向目的地並顯示直線距離。對準時箭頭變綠、寫「就在前方」。方向同時寫成句子讓讀屏念出；沒有相機或指南針時改用錶盤或東南西北說法。
+要到區公所、戶政事務所或聯醫院區臨櫃辦理時，打開相機，前方地面上會出現一個帶透視與厚度的圓盤，盤上的箭頭指向目的地，上方顯示直線距離。對準時圓盤變綠、寫「就在前方」。方向同時寫成句子讓讀屏念出；沒有相機或指南針時改用錶盤或東南西北說法。
 
 </td>
 <td width="50%" valign="top">
@@ -87,7 +87,7 @@
 </td>
 </tr>
 <tr>
-<td align="center"><img src="docs/readme/ar.gif" width="280" alt="AR 方向指引：慢慢轉身，箭頭轉到指向大安區公所時變綠色，顯示就在前方"><br><sub>電腦瀏覽器模擬：街景是假的相機畫面，方位由程式合成</sub></td>
+<td align="center"><img src="docs/readme/ar.gif" width="280" alt="AR 方向指引：慢慢轉身，地面圓盤上的箭頭轉到指向大安區公所時，圓盤變綠色，顯示就在前方"><br><sub>電腦瀏覽器模擬：街景是假的相機畫面，方位由程式合成</sub></td>
 <td align="center"><img src="docs/readme/display.gif" width="280" alt="字級與對比：依序切換大、特大、最大字級、高對比與易讀版"></td>
 </tr>
 </table>
@@ -117,7 +117,7 @@
 <td align="center"><img src="docs/readme/city.png" alt="城市地圖"><br><b>城市地圖</b><br><sub>標籤是真正的按鈕，讀屏可操作</sub></td>
 <td align="center"><img src="docs/readme/city-sheet.png" alt="大樓抽屜"><br><b>大樓抽屜</b><br><sub>這一類的事與進度</sub></td>
 <td align="center"><img src="docs/readme/guide.png" alt="城市嚮導"><br><b>城市嚮導</b><br><sub>沒有模型時用預設說明</sub></td>
-<td align="center"><img src="docs/readme/ar.png" alt="AR 方向指引"><br><b>AR 方向指引</b><br><sub>對準後箭頭變綠（瀏覽器模擬）</sub></td>
+<td align="center"><img src="docs/readme/ar.png" alt="AR 方向指引"><br><b>AR 方向指引</b><br><sub>地面上的箭頭，對準後變綠（瀏覽器模擬）</sub></td>
 </tr>
 <tr>
 <td align="center"><img src="docs/readme/safety.png" alt="家暴求助"><br><b>家暴求助</b><br><sub>不留紀錄，固定有 110、113 與快速離開</sub></td>
