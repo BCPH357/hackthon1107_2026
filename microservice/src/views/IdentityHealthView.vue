@@ -67,7 +67,7 @@ function next() {
 
     <OptionGroup v-model="identity.health" legend="健康狀況" :options="HEALTH_OPTIONS" multiple />
 
-    <p class="privacy muted">
+    <p class="privacy muted easy-hide">
       <AppIcon name="lock" />
       健康與身心資料只存在這支手機上，不會上傳。
     </p>

@@ -60,7 +60,7 @@ onMounted(refresh)
     <div class="stack">
       <p class="eyebrow">{{ elderName }}交給你</p>
       <h1 class="page-title"><span class="mark">{{ event?.title ?? '這件事已不在清單上' }}</span></h1>
-      <p class="muted">打勾會同步到{{ elderName }}的手機。打勾只是記錄進度，不代表機關已經受理。</p>
+      <p class="muted easy-hide">打勾會同步到{{ elderName }}的手機。打勾只是記錄進度，不代表機關已經受理。</p>
     </div>
 
     <section aria-labelledby="mine-title" class="stack">

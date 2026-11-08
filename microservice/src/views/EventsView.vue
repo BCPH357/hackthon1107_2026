@@ -25,7 +25,7 @@ const moreTagCount = computed(() => Math.max(0, identityTags.value.length - PREV
 
     <RouterLink v-if="hasIdentity" to="/identity/summary" class="identity card card--tint">
       <span class="identity__text">
-        <span class="muted">依照你填的情況推薦</span>
+        <span class="muted easy-hide">依照你填的情況推薦</span>
         <span class="tag-list">
           <span v-for="tag in previewTags" :key="tag" class="tag">{{ tag }}</span>
           <span v-if="moreTagCount" class="tag">還有 {{ moreTagCount }} 項</span>

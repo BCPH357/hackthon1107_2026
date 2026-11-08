@@ -184,6 +184,35 @@ h1[tabindex='-1']:focus {
   color: var(--c-gray-600);
 }
 
+/*
+ * 易讀版：畫面上不出現灰色小字。
+ * 說明、提示、版本號這類輔助文字不顯示（在元素加 .easy-hide，或列在下面）；
+ * 其餘灰色小字是要讓人看到的資訊（狀態、地址、示範內容聲明、安全提醒），改成一般大小的黑字。
+ */
+:root[data-easy-read='on'] :is(
+    .easy-hide,
+    .page__version,
+    .badge--draft,
+    .how__text,
+    .option-group__hint,
+    .option__hint,
+    .event-row__sub,
+    .category__count,
+    .resource__sources-label
+  ) {
+  display: none !important;
+}
+
+:root[data-easy-read='on'] :is(.muted, .step__summary, .sample__text, .resource__desc, .guide-dialog__answer small) {
+  font-size: var(--fs-h3);
+  color: var(--c-gray-900);
+}
+
+:root[data-easy-read='on'] .badge--muted {
+  font-size: var(--fs-body);
+  color: var(--c-gray-900);
+}
+
 .stack {
   display: flex;
   flex-direction: column;

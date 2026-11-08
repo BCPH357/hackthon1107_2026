@@ -40,9 +40,9 @@ const pendingCount = computed(() => props.category.events.length - progress.valu
     </header>
 
     <p class="category-sheet__meta">
-      <span class="badge badge--muted">{{ category.events.length }} 件事</span>
+      <span class="badge badge--muted easy-hide">{{ category.events.length }} 件事</span>
       <span v-if="recommended" class="badge badge--match">為你推薦</span>
-      <span v-if="pendingCount" class="muted">其中 {{ pendingCount }} 件內容建置中</span>
+      <span v-if="pendingCount" class="muted easy-hide">其中 {{ pendingCount }} 件內容建置中</span>
     </p>
 
     <section v-if="progress.total" class="category-sheet__progress" aria-label="這一類的進度">
@@ -57,7 +57,7 @@ const pendingCount = computed(() => props.category.events.length - progress.valu
       >
         <span class="category-sheet__fill" :style="{ width: `${percent}%` }" />
       </div>
-      <p class="muted">和「要辦的事」的進度同步</p>
+      <p class="muted easy-hide">和「要辦的事」的進度同步</p>
     </section>
 
     <ul class="category-sheet__list card">

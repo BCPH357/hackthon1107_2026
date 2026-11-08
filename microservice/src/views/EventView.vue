@@ -107,7 +107,7 @@ onMounted(async () => {
           <span class="progress__fill" :style="{ width: `${(done / steps.length) * 100}%` }" />
         </div>
         <!-- CLAUDE_UI_GUIDE 2.4：打勾只是本機進度，不可當作政府已受理 -->
-        <p class="muted">
+        <p class="muted easy-hide">
           {{ progressNote }}不代表機關已經受理。
         </p>
       </div>

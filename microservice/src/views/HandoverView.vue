@@ -163,7 +163,7 @@ onBeforeUnmount(stop)
       <p v-if="!markedSteps.length && !unmarkedSteps.length" class="card card--tint">
         還沒有選要交給家人的步驟。請回到上一頁，在做不到的步驟按「交給家人」。
       </p>
-      <p class="privacy muted">
+      <p class="privacy muted easy-hide">
         <AppIcon name="info" />
         <span>家人會看到這件事每一步辦好了沒有，並可以勾選交給他的步驟。不會傳送你的身分證字號、電話、地址和健康資料。</span>
       </p>
@@ -186,7 +186,7 @@ onBeforeUnmount(stop)
     <section v-else-if="status.step === 'sent'" class="card stack waiting" role="status">
       <span class="done-icon"><AppIcon name="check" size="2rem" /></span>
       <p class="waiting__label">已經交給家人了。</p>
-      <p class="muted">家人辦好後，這件事的步驟會自動打勾。</p>
+      <p class="muted easy-hide">家人辦好後，這件事的步驟會自動打勾。</p>
       <p v-if="mocked" class="badge badge--draft">瀏覽器預覽・模擬結果</p>
     </section>
 

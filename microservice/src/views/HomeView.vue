@@ -72,7 +72,7 @@ const HOW_IT_WORKS = [
       <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
       <span class="continue__text">
         <span class="continue__title">家人要幫你辦事？</span>
-        <span class="muted">用藍牙把你的年齡、戶籍傳給他</span>
+        <span class="muted easy-hide">用藍牙把你的年齡、戶籍傳給他</span>
       </span>
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
@@ -90,12 +90,12 @@ const HOW_IT_WORKS = [
       <span class="share__icon"><AppIcon name="bluetooth" size="1.5rem" /></span>
       <span class="continue__text">
         <span class="continue__title">接收家人交棒</span>
-        <span class="muted">家人有做不到的步驟，可以用藍牙交給你辦</span>
+        <span class="muted easy-hide">家人有做不到的步驟，可以用藍牙交給你辦</span>
       </span>
       <AppIcon name="chevron-right" size="1.5rem" />
     </RouterLink>
 
-    <p class="privacy muted">
+    <p class="privacy muted easy-hide">
       <AppIcon name="lock" />
       你填的資料只存在這支手機上，不會上傳。
     </p>

@@ -202,7 +202,7 @@ function undo() {
             >
               <span class="service__text">
                 <span class="service__name">{{ service.title }}</span>
-                <span class="muted">{{ service.description }}</span>
+                <span class="muted easy-hide">{{ service.description }}</span>
               </span>
               <span v-if="!available" class="badge badge--muted">尚未開放</span>
               <AppIcon v-else :name="service.phone ? 'phone' : 'arrow-up-right'" class="service__icon" />

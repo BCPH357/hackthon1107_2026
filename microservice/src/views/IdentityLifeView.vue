@@ -61,7 +61,7 @@ function next() {
       <summary class="more__summary">
         <span class="more__title">
           更多身分條件
-          <span class="muted">國籍、工作、性別等，選填</span>
+          <span class="muted easy-hide">國籍、工作、性別等，選填</span>
         </span>
         <AppIcon name="chevron-down" class="more__chevron" />
       </summary>

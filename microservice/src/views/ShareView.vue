@@ -120,7 +120,7 @@ onBeforeUnmount(stop)
             <dd>{{ item.value }}</dd>
           </div>
         </dl>
-        <p class="privacy muted">
+        <p class="privacy muted easy-hide">
           <AppIcon name="lock" />
           不會傳送身分證字號、電話、地址和健康資料。資料直接從這支手機傳到家人的手機，不經過網路。
         </p>

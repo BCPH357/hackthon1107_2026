@@ -381,7 +381,7 @@ const isHospital = computed(() => placeType.value === 'hospital')
         <div class="card direction">
           <h2 id="direction-title" class="visually-hidden">現在的方向</h2>
           <p class="direction__sentence">{{ directionSentence }}</p>
-          <p v-if="walkText" class="muted">{{ walkText }}（以每分鐘 {{ WALK_METERS_PER_MINUTE }} 公尺、慢慢走估算）</p>
+          <p v-if="walkText" class="muted easy-hide">{{ walkText }}（以每分鐘 {{ WALK_METERS_PER_MINUTE }} 公尺、慢慢走估算）</p>
           <p class="muted">箭頭指的是直線方向，不是走路路線。手機直著拿，走路時請抬頭看路，過馬路依照號誌。</p>
           <div class="actions">
             <button type="button" class="btn btn--secondary" @click="toggleCamera">
@@ -478,7 +478,7 @@ const isHospital = computed(() => placeType.value === 'hospital')
       </div>
     </section>
 
-    <p class="notice muted">
+    <p class="notice muted easy-hide">
       <AppIcon name="lock" />
       <span>相機畫面只在你的手機上顯示，不會錄影或上傳。位置只用來計算方向和距離，不會儲存。</span>
     </p>

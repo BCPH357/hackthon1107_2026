@@ -68,9 +68,10 @@ function apply(): void {
   const root = document.documentElement
   root.style.fontSize = `${FONT_SCALE_PERCENT[display.fontScale]}%`
   root.dataset.contrast = display.contrast
+  root.dataset.easyRead = display.easyRead
 }
 
-watch(() => [display.fontScale, display.contrast], apply, { immediate: true })
+watch(() => [display.fontScale, display.contrast, display.easyRead], apply, { immediate: true })
 
 export function isEasyRead(): boolean {
   return display.easyRead === 'on'
